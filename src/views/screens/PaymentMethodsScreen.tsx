@@ -39,16 +39,25 @@ export default function PaymentMethodsScreen(_props: PaymentMethodsScreenProps) 
       return;
     }
 
+    const methodName = newName.trim();
     const input: CreatePaymentMethodInput = {
-      name: newName.trim(),
+      name: methodName,
       icon: newIcon || undefined,
     };
 
     paymentMethodService.create(input);
-    setNewName('');
-    setNewIcon('');
     setModalVisible(false);
-    loadPaymentMethods();
+
+    Alert.alert('완료', `"${methodName}" 결제수단이 생성되었습니다`, [
+      {
+        text: '확인',
+        onPress: () => {
+          setNewName('');
+          setNewIcon('');
+          loadPaymentMethods();
+        },
+      },
+    ]);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -59,7 +68,14 @@ export default function PaymentMethodsScreen(_props: PaymentMethodsScreenProps) 
         style: 'destructive',
         onPress: () => {
           paymentMethodService.delete(id);
-          loadPaymentMethods();
+          Alert.alert('완료', `"${name}" 결제수단이 삭제되었습니다`, [
+            {
+              text: '확인',
+              onPress: () => {
+                loadPaymentMethods();
+              },
+            },
+          ]);
         },
       },
     ]);

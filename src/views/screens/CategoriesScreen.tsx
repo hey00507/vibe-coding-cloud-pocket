@@ -40,17 +40,26 @@ export default function CategoriesScreen(_props: CategoriesScreenProps) {
       return;
     }
 
+    const categoryName = newName.trim();
     const input: CreateCategoryInput = {
-      name: newName.trim(),
+      name: categoryName,
       type: filterType,
       icon: newIcon || undefined,
     };
 
     categoryService.create(input);
-    setNewName('');
-    setNewIcon('');
     setModalVisible(false);
-    loadCategories();
+
+    Alert.alert('완료', `"${categoryName}" 카테고리가 생성되었습니다`, [
+      {
+        text: '확인',
+        onPress: () => {
+          setNewName('');
+          setNewIcon('');
+          loadCategories();
+        },
+      },
+    ]);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -61,7 +70,14 @@ export default function CategoriesScreen(_props: CategoriesScreenProps) {
         style: 'destructive',
         onPress: () => {
           categoryService.delete(id);
-          loadCategories();
+          Alert.alert('완료', `"${name}" 카테고리가 삭제되었습니다`, [
+            {
+              text: '확인',
+              onPress: () => {
+                loadCategories();
+              },
+            },
+          ]);
         },
       },
     ]);
