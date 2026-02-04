@@ -22,14 +22,14 @@
 ## 0. 테스트 환경 설정
 
 ### 0.1 테스트 프레임워크 설치
-- [ ] `jest` 설치 및 설정
-- [ ] `@testing-library/react-native` 설치
-- [ ] `@testing-library/jest-native` 설치
-- [ ] `jest.config.js` 생성
-- [ ] `package.json`에 테스트 스크립트 추가
-  - [ ] `test` - 전체 테스트 실행
-  - [ ] `test:watch` - 감시 모드
-  - [ ] `test:coverage` - 커버리지 리포트
+- [x] `jest` 설치 및 설정
+- [x] `@testing-library/react-native` 설치
+- [x] `@testing-library/jest-native` 설치 (deprecated - react-native v12.4+ 내장 사용)
+- [x] `jest.config.js` 생성
+- [x] `package.json`에 테스트 스크립트 추가
+  - [x] `test` - 전체 테스트 실행
+  - [x] `test:watch` - 감시 모드
+  - [x] `test:coverage` - 커버리지 리포트
 
 ### 0.2 테스트 디렉토리 구조
 ```
@@ -38,14 +38,18 @@ __tests__/
 ├── services/        # 서비스 레이어 테스트
 ├── controllers/     # 훅/컨트롤러 테스트
 └── components/      # 컴포넌트 테스트
+    ├── common/
+    ├── calendar/
+    ├── transaction/
+    └── settings/
 ```
 
-- [ ] `__tests__/` 디렉토리 생성
-- [ ] `__tests__/utils/` 디렉토리 생성
-- [ ] `__tests__/services/` 디렉토리 생성
-- [ ] `__tests__/controllers/` 디렉토리 생성
-- [ ] `__tests__/components/` 디렉토리 생성
-- [ ] 테스트 헬퍼/목(mock) 설정 파일 생성
+- [x] `__tests__/` 디렉토리 생성
+- [x] `__tests__/utils/` 디렉토리 생성
+- [x] `__tests__/services/` 디렉토리 생성
+- [x] `__tests__/controllers/` 디렉토리 생성
+- [x] `__tests__/components/` 디렉토리 생성
+- [x] 테스트 헬퍼/목(mock) 설정 파일 생성
 
 ---
 
