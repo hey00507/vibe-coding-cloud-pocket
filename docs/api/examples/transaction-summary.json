@@ -1,0 +1,39 @@
+{
+  "description": "집계 메서드 반환값 예시",
+  "data": {
+    "transactions": [
+      {
+        "id": "transaction-1",
+        "type": "income",
+        "amount": 3000000,
+        "date": "2024-01-01T00:00:00.000Z",
+        "categoryId": "salary",
+        "paymentMethodId": "bank",
+        "memo": "1월 급여"
+      },
+      {
+        "id": "transaction-2",
+        "type": "expense",
+        "amount": 500000,
+        "date": "2024-01-15T00:00:00.000Z",
+        "categoryId": "rent",
+        "paymentMethodId": "bank",
+        "memo": "월세"
+      },
+      {
+        "id": "transaction-3",
+        "type": "expense",
+        "amount": 300000,
+        "date": "2024-01-20T00:00:00.000Z",
+        "categoryId": "food",
+        "paymentMethodId": "card",
+        "memo": "식비"
+      }
+    ],
+    "summary": {
+      "getTotalIncome": 3000000,
+      "getTotalExpense": 800000,
+      "getBalance": 2200000
+    }
+  }
+}

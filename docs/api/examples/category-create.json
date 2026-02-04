@@ -1,0 +1,15 @@
+{
+  "input": {
+    "name": "식비",
+    "type": "expense",
+    "icon": "🍔",
+    "color": "#FF5733"
+  },
+  "output": {
+    "id": "category-1-1706745600000",
+    "name": "식비",
+    "type": "expense",
+    "icon": "🍔",
+    "color": "#FF5733"
+  }
+}

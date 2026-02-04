@@ -1,0 +1,19 @@
+{
+  "input": {
+    "type": "expense",
+    "amount": 15000,
+    "date": "2024-01-15T00:00:00.000Z",
+    "categoryId": "category-1-1706745600000",
+    "paymentMethodId": "payment-method-1-1706745600000",
+    "memo": "점심 식사"
+  },
+  "output": {
+    "id": "transaction-1-1706745600000",
+    "type": "expense",
+    "amount": 15000,
+    "date": "2024-01-15T00:00:00.000Z",
+    "categoryId": "category-1-1706745600000",
+    "paymentMethodId": "payment-method-1-1706745600000",
+    "memo": "점심 식사"
+  }
+}
