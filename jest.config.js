@@ -26,10 +26,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100,
     },
     // API/서비스 레이어는 100% 커버리지 필수
     './src/services/**/*.ts': {
