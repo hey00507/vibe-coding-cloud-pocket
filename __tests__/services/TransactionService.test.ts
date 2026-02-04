@@ -1,0 +1,383 @@
+import { TransactionService } from '../../src/services/TransactionService';
+import { ITransactionService } from '../../src/services/interfaces/ITransactionService';
+import { CreateTransactionInput, Transaction } from '../../src/types';
+
+describe('TransactionService', () => {
+  let service: ITransactionService;
+
+  const createTestInput = (
+    overrides: Partial<CreateTransactionInput> = {}
+  ): CreateTransactionInput => ({
+    type: 'expense',
+    amount: 10000,
+    date: new Date('2024-01-15'),
+    categoryId: 'category-1',
+    paymentMethodId: 'payment-1',
+    memo: '테스트 거래',
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    service = new TransactionService();
+  });
+
+  describe('create', () => {
+    it('should create a new transaction with generated id', () => {
+      const input = createTestInput();
+
+      const result = service.create(input);
+
+      expect(result.id).toBeDefined();
+      expect(result.type).toBe('expense');
+      expect(result.amount).toBe(10000);
+      expect(result.date).toEqual(new Date('2024-01-15'));
+      expect(result.categoryId).toBe('category-1');
+      expect(result.paymentMethodId).toBe('payment-1');
+      expect(result.memo).toBe('테스트 거래');
+    });
+
+    it('should create a transaction without optional memo', () => {
+      const input = createTestInput({ memo: undefined });
+
+      const result = service.create(input);
+
+      expect(result.id).toBeDefined();
+      expect(result.memo).toBeUndefined();
+    });
+
+    it('should generate unique ids for each transaction', () => {
+      const input1 = createTestInput();
+      const input2 = createTestInput();
+
+      const result1 = service.create(input1);
+      const result2 = service.create(input2);
+
+      expect(result1.id).not.toBe(result2.id);
+    });
+
+    it('should create income transaction', () => {
+      const input = createTestInput({ type: 'income', amount: 3000000 });
+
+      const result = service.create(input);
+
+      expect(result.type).toBe('income');
+      expect(result.amount).toBe(3000000);
+    });
+  });
+
+  describe('getById', () => {
+    it('should return transaction when found', () => {
+      const input = createTestInput();
+      const created = service.create(input);
+
+      const result = service.getById(created.id);
+
+      expect(result).toEqual(created);
+    });
+
+    it('should return undefined when not found', () => {
+      const result = service.getById('non-existent-id');
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getAll', () => {
+    it('should return empty array when no transactions exist', () => {
+      const result = service.getAll();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return all transactions', () => {
+      service.create(createTestInput());
+      service.create(createTestInput({ type: 'income' }));
+      service.create(createTestInput());
+
+      const result = service.getAll();
+
+      expect(result).toHaveLength(3);
+    });
+  });
+
+  describe('getByType', () => {
+    beforeEach(() => {
+      service.create(createTestInput({ type: 'expense', amount: 10000 }));
+      service.create(createTestInput({ type: 'income', amount: 50000 }));
+      service.create(createTestInput({ type: 'expense', amount: 20000 }));
+      service.create(createTestInput({ type: 'income', amount: 100000 }));
+    });
+
+    it('should return only expense transactions', () => {
+      const result = service.getByType('expense');
+
+      expect(result).toHaveLength(2);
+      expect(result.every((t) => t.type === 'expense')).toBe(true);
+    });
+
+    it('should return only income transactions', () => {
+      const result = service.getByType('income');
+
+      expect(result).toHaveLength(2);
+      expect(result.every((t) => t.type === 'income')).toBe(true);
+    });
+
+    it('should return empty array when no transactions of type exist', () => {
+      service.clear();
+      service.create(createTestInput({ type: 'expense' }));
+
+      const result = service.getByType('income');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getByDateRange', () => {
+    beforeEach(() => {
+      service.create(createTestInput({ date: new Date('2024-01-01') }));
+      service.create(createTestInput({ date: new Date('2024-01-15') }));
+      service.create(createTestInput({ date: new Date('2024-01-31') }));
+      service.create(createTestInput({ date: new Date('2024-02-15') }));
+    });
+
+    it('should return transactions within date range', () => {
+      const result = service.getByDateRange(
+        new Date('2024-01-10'),
+        new Date('2024-01-20')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toEqual(new Date('2024-01-15'));
+    });
+
+    it('should include transactions on boundary dates', () => {
+      const result = service.getByDateRange(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toHaveLength(3);
+    });
+
+    it('should return empty array when no transactions in range', () => {
+      const result = service.getByDateRange(
+        new Date('2024-03-01'),
+        new Date('2024-03-31')
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getByCategoryId', () => {
+    beforeEach(() => {
+      service.create(createTestInput({ categoryId: 'food' }));
+      service.create(createTestInput({ categoryId: 'transport' }));
+      service.create(createTestInput({ categoryId: 'food' }));
+    });
+
+    it('should return transactions by category', () => {
+      const result = service.getByCategoryId('food');
+
+      expect(result).toHaveLength(2);
+      expect(result.every((t) => t.categoryId === 'food')).toBe(true);
+    });
+
+    it('should return empty array when no transactions with category', () => {
+      const result = service.getByCategoryId('entertainment');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getByPaymentMethodId', () => {
+    beforeEach(() => {
+      service.create(createTestInput({ paymentMethodId: 'card' }));
+      service.create(createTestInput({ paymentMethodId: 'cash' }));
+      service.create(createTestInput({ paymentMethodId: 'card' }));
+    });
+
+    it('should return transactions by payment method', () => {
+      const result = service.getByPaymentMethodId('card');
+
+      expect(result).toHaveLength(2);
+      expect(result.every((t) => t.paymentMethodId === 'card')).toBe(true);
+    });
+
+    it('should return empty array when no transactions with payment method', () => {
+      const result = service.getByPaymentMethodId('bank-transfer');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('update', () => {
+    it('should update transaction amount', () => {
+      const created = service.create(createTestInput({ amount: 10000 }));
+
+      const result = service.update(created.id, { amount: 15000 });
+
+      expect(result).toBeDefined();
+      expect(result!.amount).toBe(15000);
+    });
+
+    it('should update transaction type', () => {
+      const created = service.create(createTestInput({ type: 'expense' }));
+
+      const result = service.update(created.id, { type: 'income' });
+
+      expect(result).toBeDefined();
+      expect(result!.type).toBe('income');
+    });
+
+    it('should update transaction date', () => {
+      const created = service.create(createTestInput());
+      const newDate = new Date('2024-02-20');
+
+      const result = service.update(created.id, { date: newDate });
+
+      expect(result).toBeDefined();
+      expect(result!.date).toEqual(newDate);
+    });
+
+    it('should update transaction memo', () => {
+      const created = service.create(createTestInput({ memo: '원래 메모' }));
+
+      const result = service.update(created.id, { memo: '수정된 메모' });
+
+      expect(result).toBeDefined();
+      expect(result!.memo).toBe('수정된 메모');
+    });
+
+    it('should update multiple fields at once', () => {
+      const created = service.create(createTestInput());
+
+      const result = service.update(created.id, {
+        amount: 25000,
+        categoryId: 'new-category',
+        memo: '새 메모',
+      });
+
+      expect(result).toBeDefined();
+      expect(result!.amount).toBe(25000);
+      expect(result!.categoryId).toBe('new-category');
+      expect(result!.memo).toBe('새 메모');
+    });
+
+    it('should return undefined when transaction not found', () => {
+      const result = service.update('non-existent-id', { amount: 10000 });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should persist update in storage', () => {
+      const created = service.create(createTestInput({ amount: 10000 }));
+      service.update(created.id, { amount: 20000 });
+
+      const fetched = service.getById(created.id);
+
+      expect(fetched!.amount).toBe(20000);
+    });
+  });
+
+  describe('delete', () => {
+    it('should delete existing transaction and return true', () => {
+      const created = service.create(createTestInput());
+
+      const result = service.delete(created.id);
+
+      expect(result).toBe(true);
+      expect(service.getById(created.id)).toBeUndefined();
+    });
+
+    it('should return false when transaction not found', () => {
+      const result = service.delete('non-existent-id');
+
+      expect(result).toBe(false);
+    });
+
+    it('should not affect other transactions', () => {
+      const t1 = service.create(createTestInput());
+      const t2 = service.create(createTestInput());
+
+      service.delete(t1.id);
+
+      expect(service.getById(t2.id)).toBeDefined();
+      expect(service.getAll()).toHaveLength(1);
+    });
+  });
+
+  describe('clear', () => {
+    it('should remove all transactions', () => {
+      service.create(createTestInput());
+      service.create(createTestInput());
+
+      service.clear();
+
+      expect(service.getAll()).toEqual([]);
+    });
+  });
+
+  describe('getTotalIncome', () => {
+    it('should return 0 when no transactions', () => {
+      const result = service.getTotalIncome();
+
+      expect(result).toBe(0);
+    });
+
+    it('should return sum of all income transactions', () => {
+      service.create(createTestInput({ type: 'income', amount: 100000 }));
+      service.create(createTestInput({ type: 'income', amount: 50000 }));
+      service.create(createTestInput({ type: 'expense', amount: 10000 }));
+
+      const result = service.getTotalIncome();
+
+      expect(result).toBe(150000);
+    });
+  });
+
+  describe('getTotalExpense', () => {
+    it('should return 0 when no transactions', () => {
+      const result = service.getTotalExpense();
+
+      expect(result).toBe(0);
+    });
+
+    it('should return sum of all expense transactions', () => {
+      service.create(createTestInput({ type: 'expense', amount: 10000 }));
+      service.create(createTestInput({ type: 'expense', amount: 20000 }));
+      service.create(createTestInput({ type: 'income', amount: 100000 }));
+
+      const result = service.getTotalExpense();
+
+      expect(result).toBe(30000);
+    });
+  });
+
+  describe('getBalance', () => {
+    it('should return 0 when no transactions', () => {
+      const result = service.getBalance();
+
+      expect(result).toBe(0);
+    });
+
+    it('should return income minus expense', () => {
+      service.create(createTestInput({ type: 'income', amount: 100000 }));
+      service.create(createTestInput({ type: 'expense', amount: 30000 }));
+      service.create(createTestInput({ type: 'expense', amount: 20000 }));
+
+      const result = service.getBalance();
+
+      expect(result).toBe(50000);
+    });
+
+    it('should handle negative balance', () => {
+      service.create(createTestInput({ type: 'income', amount: 10000 }));
+      service.create(createTestInput({ type: 'expense', amount: 50000 }));
+
+      const result = service.getBalance();
+
+      expect(result).toBe(-40000);
+    });
+  });
+});
