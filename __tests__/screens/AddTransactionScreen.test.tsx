@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import AddTransactionScreen from '../../src/views/screens/AddTransactionScreen';
 import {
@@ -14,6 +14,7 @@ jest.spyOn(Alert, 'alert');
 // Mock navigation
 const mockNavigation = {
   navigate: jest.fn(),
+  setParams: jest.fn(),
 };
 
 // Mock useFocusEffect - useEffect처럼 동작하도록 설정
@@ -259,6 +260,111 @@ describe('AddTransactionScreen', () => {
       expect(transactions).toHaveLength(1);
       expect(transactions[0].amount).toBe(15000);
       expect(transactions[0].type).toBe('expense');
+    });
+  });
+
+  describe('date selector', () => {
+    it('should render date selector', () => {
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      expect(screen.getByText('날짜')).toBeTruthy();
+      expect(screen.getByText('오늘')).toBeTruthy();
+      expect(screen.getByText('어제')).toBeTruthy();
+      expect(screen.getByText('직접 선택')).toBeTruthy();
+    });
+
+    it('should use selected date when creating transaction', () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 1, 6));
+
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      // 어제 날짜 선택
+      fireEvent.press(screen.getByText('어제'));
+
+      fireEvent.changeText(screen.getByPlaceholderText('0'), '10000');
+      fireEvent.press(screen.getByText('지출 추가'));
+
+      const transactions = transactionService.getAll();
+      expect(transactions).toHaveLength(1);
+      // 어제 날짜여야 함
+      const txDate = new Date(transactions[0].date);
+      expect(txDate.getDate()).toBe(5);
+
+      jest.useRealTimers();
+    });
+  });
+
+  describe('submission flow', () => {
+    it('should navigate to Home with selectedDate on confirm', () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 1, 6));
+
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      fireEvent.changeText(screen.getByPlaceholderText('0'), '15000');
+      fireEvent.press(screen.getByText('지출 추가'));
+
+      // Alert의 "확인" 콜백 실행
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      const confirmButton = alertCall[2].find(
+        (btn: any) => btn.text === '확인'
+      );
+      confirmButton.onPress();
+
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Home', {
+        selectedDate: '2026-02-06',
+      });
+
+      jest.useRealTimers();
+    });
+
+    it('should reset form and date on continue registration', () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 1, 6));
+
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      // 어제 날짜 선택
+      fireEvent.press(screen.getByText('어제'));
+      fireEvent.changeText(screen.getByPlaceholderText('0'), '15000');
+      fireEvent.press(screen.getByText('지출 추가'));
+
+      // "계속 등록하기" 콜백 실행
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      const continueButton = alertCall[2].find(
+        (btn: any) => btn.text === '계속 등록하기'
+      );
+      act(() => {
+        continueButton.onPress();
+      });
+
+      // 금액 초기화 확인
+      expect(screen.getByPlaceholderText('0').props.value).toBe('');
+      // 날짜가 오늘로 리셋 (2026-02-06)
+      expect(screen.getByText('2026년 2월 6일 (금)')).toBeTruthy();
+
+      jest.useRealTimers();
     });
   });
 

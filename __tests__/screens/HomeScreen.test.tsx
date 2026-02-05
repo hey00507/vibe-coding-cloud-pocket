@@ -10,6 +10,7 @@ import {
 // Mock navigation
 const mockNavigation = {
   navigate: jest.fn(),
+  setParams: jest.fn(),
 };
 
 // Mock useFocusEffect - useEffect처럼 동작하도록 설정
@@ -32,6 +33,7 @@ describe('HomeScreen', () => {
     categoryService.clear();
     paymentMethodService.clear();
     mockNavigation.navigate.mockClear();
+    mockNavigation.setParams.mockClear();
   });
 
   describe('rendering', () => {
@@ -233,6 +235,87 @@ describe('HomeScreen', () => {
 
       // 리스트 뷰 요소가 보여야 함
       expect(screen.getByText('전체')).toBeTruthy();
+    });
+  });
+
+  describe('route parameter handling', () => {
+    beforeEach(() => {
+      const category = categoryService.create({
+        name: '식비',
+        type: 'expense',
+      });
+      const paymentMethod = paymentMethodService.create({
+        name: '신용카드',
+      });
+
+      // 2026-02-06에 거래 추가
+      transactionService.create({
+        type: 'expense',
+        amount: 15000,
+        date: new Date(2026, 1, 6),
+        categoryId: category.id,
+        paymentMethodId: paymentMethod.id,
+      });
+    });
+
+    it('should switch to calendar view when selectedDate param is provided', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home', params: { selectedDate: '2026-02-06' } }}
+        />
+      );
+
+      // 캘린더 뷰가 표시되어야 함 (요일 헤더)
+      expect(screen.getByText('일')).toBeTruthy();
+      expect(screen.getByText('토')).toBeTruthy();
+    });
+
+    it('should navigate to correct month when selectedDate param is provided', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home', params: { selectedDate: '2026-02-06' } }}
+        />
+      );
+
+      // 2026년 2월이 표시되어야 함
+      expect(screen.getByText('2026년 2월')).toBeTruthy();
+    });
+
+    it('should open DayDetailModal for selected date', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home', params: { selectedDate: '2026-02-06' } }}
+        />
+      );
+
+      // DayDetailModal이 열리고 날짜가 표시되어야 함
+      expect(screen.getByText('2월 6일 (금)')).toBeTruthy();
+    });
+
+    it('should clear route params after processing', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home', params: { selectedDate: '2026-02-06' } }}
+        />
+      );
+
+      expect(mockNavigation.setParams).toHaveBeenCalledWith({ selectedDate: undefined });
+    });
+
+    it('should not open modal when no route params', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      // DayDetailModal은 열리지 않아야 함 - 모달의 날짜 형식이 없어야 함
+      expect(screen.queryByText('✕')).toBeNull();
     });
   });
 

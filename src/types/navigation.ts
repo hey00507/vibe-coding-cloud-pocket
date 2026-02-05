@@ -1,7 +1,7 @@
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
 export type RootTabParamList = {
-  Home: undefined;
+  Home: { selectedDate?: string } | undefined;
   AddTransaction: undefined;
   Settings: undefined;
 };

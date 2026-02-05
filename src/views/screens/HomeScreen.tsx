@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ export { transactionService, categoryService, paymentMethodService };
 
 type FilterType = 'all' | TransactionType;
 
-export default function HomeScreen(_props: HomeScreenProps) {
+export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +48,32 @@ export default function HomeScreen(_props: HomeScreenProps) {
   const [selectedTransactions, setSelectedTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  // 라우트 파라미터 처리 (AddTransactionScreen에서 전달)
+  const routeSelectedDate = route.params?.selectedDate;
+  useEffect(() => {
+    if (!routeSelectedDate) return;
+
+    const [yearStr, monthStr, dayStr] = routeSelectedDate.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+
+    // 캘린더 뷰로 전환
+    setViewMode('calendar');
+    setCurrentYear(year);
+    setCurrentMonth(month);
+
+    // 해당 날짜의 거래 조회 후 DayDetailModal 열기
+    const date = new Date(year, month - 1, day);
+    const dayTransactions = transactionService.getByDate(date);
+    setSelectedDate(date);
+    setSelectedTransactions(dayTransactions);
+    setModalVisible(true);
+
+    // 파라미터 클리어
+    navigation.setParams({ selectedDate: undefined });
+  }, [routeSelectedDate, navigation]);
 
   const loadData = useCallback(() => {
     const allTransactions = transactionService.getAll();

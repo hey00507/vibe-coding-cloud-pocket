@@ -23,11 +23,13 @@ import {
   categoryService,
   paymentMethodService,
 } from './HomeScreen';
+import DateSelector from '../components/DateSelector';
 
 export default function AddTransactionScreen({
   navigation,
 }: AddTransactionScreenProps) {
   const [type, setType] = useState<TransactionType>('expense');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
@@ -89,13 +91,15 @@ export default function AddTransactionScreen({
     const input: CreateTransactionInput = {
       type,
       amount: numAmount,
-      date: new Date(),
+      date: selectedDate,
       categoryId: selectedCategoryId,
       paymentMethodId: selectedPaymentMethodId,
       memo: memo.trim() || undefined,
     };
 
     transactionService.create(input);
+
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
 
     const typeText = type === 'expense' ? '지출' : '수입';
     Alert.alert('완료', `${typeText} ${numAmount.toLocaleString()}원이 등록되었습니다`, [
@@ -104,7 +108,7 @@ export default function AddTransactionScreen({
         onPress: () => {
           setAmount('');
           setMemo('');
-          navigation.navigate('Home');
+          navigation.navigate('Home', { selectedDate: dateStr });
         },
       },
       {
@@ -112,6 +116,7 @@ export default function AddTransactionScreen({
         onPress: () => {
           setAmount('');
           setMemo('');
+          setSelectedDate(new Date());
         },
       },
     ]);
@@ -162,6 +167,11 @@ export default function AddTransactionScreen({
             </Text>
           </TouchableOpacity>
         </View>
+
+        <DateSelector
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>금액</Text>
