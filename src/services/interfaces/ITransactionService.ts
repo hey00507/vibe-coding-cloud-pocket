@@ -3,6 +3,7 @@ import {
   CreateTransactionInput,
   UpdateTransactionInput,
   TransactionType,
+  DailySummary,
 } from '../../types';
 
 /**
@@ -96,4 +97,19 @@ export interface ITransactionService {
    * @returns 잔액
    */
   getBalance(): number;
+
+  /**
+   * 특정 날짜의 거래 조회
+   * @param date 조회할 날짜
+   * @returns 해당 날짜의 거래 배열
+   */
+  getByDate(date: Date): Transaction[];
+
+  /**
+   * 특정 월의 일별 요약 조회
+   * @param year 연도
+   * @param month 월 (1-12)
+   * @returns 해당 월의 일별 요약 배열
+   */
+  getDailySummaries(year: number, month: number): DailySummary[];
 }

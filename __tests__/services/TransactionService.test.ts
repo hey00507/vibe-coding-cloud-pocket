@@ -380,4 +380,145 @@ describe('TransactionService', () => {
       expect(result).toBe(-40000);
     });
   });
+
+  describe('getByDate', () => {
+    beforeEach(() => {
+      service.create(
+        createTestInput({ date: new Date('2024-01-15'), amount: 10000 })
+      );
+      service.create(
+        createTestInput({ date: new Date('2024-01-15'), amount: 5000 })
+      );
+      service.create(
+        createTestInput({ date: new Date('2024-01-16'), amount: 20000 })
+      );
+    });
+
+    it('should return transactions for specific date', () => {
+      const result = service.getByDate(new Date('2024-01-15'));
+
+      expect(result).toHaveLength(2);
+      result.forEach((t) => {
+        expect(t.date.toISOString().split('T')[0]).toBe('2024-01-15');
+      });
+    });
+
+    it('should return empty array when no transactions on date', () => {
+      const result = service.getByDate(new Date('2024-01-20'));
+
+      expect(result).toEqual([]);
+    });
+
+    it('should match date regardless of time', () => {
+      service.create(
+        createTestInput({
+          date: new Date('2024-01-17T09:30:00'),
+          amount: 1000,
+        })
+      );
+      service.create(
+        createTestInput({
+          date: new Date('2024-01-17T18:45:00'),
+          amount: 2000,
+        })
+      );
+
+      const result = service.getByDate(new Date('2024-01-17'));
+
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('getDailySummaries', () => {
+    beforeEach(() => {
+      // 1월 15일: 수입 100,000, 지출 30,000
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 20000,
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 10000,
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      // 1월 20일: 지출 15,000
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 15000,
+          date: new Date('2024-01-20'),
+        })
+      );
+
+      // 2월 5일: 수입 50,000 (다른 달)
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 50000,
+          date: new Date('2024-02-05'),
+        })
+      );
+    });
+
+    it('should return daily summaries for specified month', () => {
+      const result = service.getDailySummaries(2024, 1);
+
+      expect(result).toHaveLength(2); // 1월 15일, 1월 20일
+    });
+
+    it('should calculate correct totals for each day', () => {
+      const result = service.getDailySummaries(2024, 1);
+
+      const jan15 = result.find((s) => s.date === '2024-01-15');
+      expect(jan15).toBeDefined();
+      expect(jan15!.totalIncome).toBe(100000);
+      expect(jan15!.totalExpense).toBe(30000);
+      expect(jan15!.balance).toBe(70000);
+      expect(jan15!.transactionCount).toBe(3);
+    });
+
+    it('should handle days with only expenses', () => {
+      const result = service.getDailySummaries(2024, 1);
+
+      const jan20 = result.find((s) => s.date === '2024-01-20');
+      expect(jan20).toBeDefined();
+      expect(jan20!.totalIncome).toBe(0);
+      expect(jan20!.totalExpense).toBe(15000);
+      expect(jan20!.balance).toBe(-15000);
+      expect(jan20!.transactionCount).toBe(1);
+    });
+
+    it('should return empty array when no transactions in month', () => {
+      const result = service.getDailySummaries(2024, 3);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should not include transactions from other months', () => {
+      const result = service.getDailySummaries(2024, 2);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-02-05');
+    });
+
+    it('should sort summaries by date', () => {
+      const result = service.getDailySummaries(2024, 1);
+
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[1].date).toBe('2024-01-20');
+    });
+  });
 });

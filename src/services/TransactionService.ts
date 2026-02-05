@@ -3,6 +3,7 @@ import {
   CreateTransactionInput,
   UpdateTransactionInput,
   TransactionType,
+  DailySummary,
 } from '../types';
 import { ITransactionService } from './interfaces/ITransactionService';
 
@@ -106,5 +107,58 @@ export class TransactionService implements ITransactionService {
 
   getBalance(): number {
     return this.getTotalIncome() - this.getTotalExpense();
+  }
+
+  getByDate(date: Date): Transaction[] {
+    const targetDate = this.formatDateToString(date);
+    return this.getAll().filter((transaction) => {
+      const transactionDate = this.formatDateToString(transaction.date);
+      return transactionDate === targetDate;
+    });
+  }
+
+  getDailySummaries(year: number, month: number): DailySummary[] {
+    // 해당 월의 거래만 필터링
+    const monthTransactions = this.getAll().filter((transaction) => {
+      const d = transaction.date;
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    });
+
+    // 날짜별로 그룹화
+    const dailyMap = new Map<string, Transaction[]>();
+    monthTransactions.forEach((transaction) => {
+      const dateKey = this.formatDateToString(transaction.date);
+      const existing = dailyMap.get(dateKey) || [];
+      dailyMap.set(dateKey, [...existing, transaction]);
+    });
+
+    // DailySummary 배열 생성
+    const summaries: DailySummary[] = [];
+    dailyMap.forEach((transactions, date) => {
+      const totalIncome = transactions
+        .filter((t) => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const totalExpense = transactions
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      summaries.push({
+        date,
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        transactionCount: transactions.length,
+      });
+    });
+
+    // 날짜순 정렬
+    return summaries.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  private formatDateToString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

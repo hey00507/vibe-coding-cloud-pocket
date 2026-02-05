@@ -47,3 +47,12 @@ export type CreateTransactionInput = Omit<Transaction, 'id'>;
 
 // 거래 수정 시 필요한 데이터
 export type UpdateTransactionInput = Partial<Omit<Transaction, 'id'>>;
+
+// 일별 거래 요약
+export interface DailySummary {
+  date: string; // 'YYYY-MM-DD' 형식
+  totalIncome: number;
+  totalExpense: number;
+  balance: number; // income - expense
+  transactionCount: number;
+}
