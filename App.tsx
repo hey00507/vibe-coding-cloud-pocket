@@ -7,8 +7,7 @@ import { RootTabParamList } from './src/types/navigation';
 
 import HomeScreen from './src/views/screens/HomeScreen';
 import AddTransactionScreen from './src/views/screens/AddTransactionScreen';
-import CategoriesScreen from './src/views/screens/CategoriesScreen';
-import PaymentMethodsScreen from './src/views/screens/PaymentMethodsScreen';
+import SettingsScreen from './src/views/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -57,21 +56,12 @@ export default function App() {
           }}
         />
         <Tab.Screen
-          name="Categories"
-          component={CategoriesScreen}
+          name="Settings"
+          component={SettingsScreen}
           options={{
-            title: '카테고리',
-            tabBarLabel: '카테고리',
-            tabBarIcon: () => <TabIcon label="📁" />,
-          }}
-        />
-        <Tab.Screen
-          name="PaymentMethods"
-          component={PaymentMethodsScreen}
-          options={{
-            title: '결제수단',
-            tabBarLabel: '결제수단',
-            tabBarIcon: () => <TabIcon label="💳" />,
+            title: '설정',
+            tabBarLabel: '설정',
+            tabBarIcon: () => <TabIcon label="⚙️" />,
           }}
         />
       </Tab.Navigator>

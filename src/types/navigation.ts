@@ -3,8 +3,7 @@ import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 export type RootTabParamList = {
   Home: undefined;
   AddTransaction: undefined;
-  Categories: undefined;
-  PaymentMethods: undefined;
+  Settings: undefined;
 };
 
 export type HomeScreenProps = BottomTabScreenProps<RootTabParamList, 'Home'>;
@@ -12,11 +11,7 @@ export type AddTransactionScreenProps = BottomTabScreenProps<
   RootTabParamList,
   'AddTransaction'
 >;
-export type CategoriesScreenProps = BottomTabScreenProps<
+export type SettingsScreenProps = BottomTabScreenProps<
   RootTabParamList,
-  'Categories'
->;
-export type PaymentMethodsScreenProps = BottomTabScreenProps<
-  RootTabParamList,
-  'PaymentMethods'
+  'Settings'
 >;

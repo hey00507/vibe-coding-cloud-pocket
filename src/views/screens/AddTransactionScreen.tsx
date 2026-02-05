@@ -78,13 +78,21 @@ export default function AddTransactionScreen({
 
     transactionService.create(input);
 
-    Alert.alert('완료', '거래가 추가되었습니다', [
+    const typeText = type === 'expense' ? '지출' : '수입';
+    Alert.alert('완료', `${typeText} ${numAmount.toLocaleString()}원이 등록되었습니다`, [
       {
         text: '확인',
         onPress: () => {
           setAmount('');
           setMemo('');
           navigation.navigate('Home');
+        },
+      },
+      {
+        text: '계속 등록하기',
+        onPress: () => {
+          setAmount('');
+          setMemo('');
         },
       },
     ]);
