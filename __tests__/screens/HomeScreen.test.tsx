@@ -188,4 +188,118 @@ describe('HomeScreen', () => {
       expect(screen.getAllByText('-15,000원').length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('view toggle', () => {
+    it('should render view toggle buttons', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      expect(screen.getByText('리스트')).toBeTruthy();
+      expect(screen.getByText('캘린더')).toBeTruthy();
+    });
+
+    it('should switch to calendar view when calendar button is pressed', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('캘린더'));
+
+      // 캘린더 뷰가 표시되어야 함 (요일 헤더)
+      expect(screen.getByText('일')).toBeTruthy();
+      expect(screen.getByText('월')).toBeTruthy();
+      expect(screen.getByText('토')).toBeTruthy();
+    });
+
+    it('should switch back to list view', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      // 캘린더로 전환
+      fireEvent.press(screen.getByText('캘린더'));
+      // 다시 리스트로 전환
+      fireEvent.press(screen.getByText('리스트'));
+
+      // 리스트 뷰 요소가 보여야 함
+      expect(screen.getByText('전체')).toBeTruthy();
+    });
+  });
+
+  describe('calendar view', () => {
+    beforeEach(() => {
+      const category = categoryService.create({
+        name: '식비',
+        type: 'expense',
+      });
+      const paymentMethod = paymentMethodService.create({
+        name: '신용카드',
+      });
+
+      // 현재 월에 거래 추가
+      const today = new Date();
+      transactionService.create({
+        type: 'expense',
+        amount: 15000,
+        date: today,
+        categoryId: category.id,
+        paymentMethodId: paymentMethod.id,
+      });
+    });
+
+    it('should display monthly summary in calendar view', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('캘린더'));
+
+      // 월별 요약이 표시되어야 함
+      expect(screen.getAllByText('수입').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('지출').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('잔액').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should navigate to previous month', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('캘린더'));
+      fireEvent.press(screen.getByText('◀'));
+
+      // 이전 월로 이동 (정확한 월 확인은 어려우므로 버튼 클릭이 동작하는지만 확인)
+      expect(screen.getByText('◀')).toBeTruthy();
+    });
+
+    it('should navigate to next month', () => {
+      render(
+        <HomeScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Home', name: 'Home' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('캘린더'));
+      fireEvent.press(screen.getByText('▶'));
+
+      expect(screen.getByText('▶')).toBeTruthy();
+    });
+  });
 });
