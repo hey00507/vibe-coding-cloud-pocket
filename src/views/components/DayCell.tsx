@@ -6,6 +6,8 @@ interface DayCellProps {
   balance?: number;
   isToday?: boolean;
   hasTransactions?: boolean;
+  selectable?: boolean;
+  isSelected?: boolean;
   onPress?: () => void;
 }
 
@@ -14,6 +16,8 @@ const DayCell: React.FC<DayCellProps> = ({
   balance,
   isToday = false,
   hasTransactions = false,
+  selectable = false,
+  isSelected = false,
   onPress,
 }) => {
   if (day === null) {
@@ -35,9 +39,9 @@ const DayCell: React.FC<DayCellProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.cell, isToday && styles.todayCell]}
+      style={[styles.cell, isToday && styles.todayCell, isSelected && styles.selectedCell]}
       onPress={onPress}
-      disabled={!hasTransactions}
+      disabled={!selectable && !hasTransactions}
     >
       <Text style={[styles.dayText, isToday && styles.todayText]}>{day}</Text>
       {hasTransactions && balance !== undefined && (
@@ -71,6 +75,10 @@ const styles = StyleSheet.create({
   },
   todayCell: {
     backgroundColor: '#E3F2FD',
+  },
+  selectedCell: {
+    backgroundColor: '#BBDEFB',
+    borderRadius: 20,
   },
   dayText: {
     fontSize: 14,

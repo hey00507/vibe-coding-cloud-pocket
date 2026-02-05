@@ -94,4 +94,60 @@ describe('DayCell', () => {
       expect(mockOnPress).not.toHaveBeenCalled();
     });
   });
+
+  describe('selectable mode', () => {
+    it('should allow press on any day when selectable is true', () => {
+      render(
+        <DayCell
+          day={20}
+          hasTransactions={false}
+          selectable={true}
+          onPress={mockOnPress}
+        />
+      );
+
+      fireEvent.press(screen.getByText('20'));
+
+      expect(mockOnPress).toHaveBeenCalledTimes(1);
+    });
+
+    it('should apply selected style when isSelected is true', () => {
+      const { toJSON } = render(
+        <DayCell
+          day={10}
+          selectable={true}
+          isSelected={true}
+          onPress={mockOnPress}
+        />
+      );
+
+      const tree = toJSON();
+      // selectedCell 스타일이 적용되어야 함
+      expect(tree).toBeTruthy();
+      // 컴포넌트가 렌더링되면 스타일에 backgroundColor: '#BBDEFB'가 포함
+      const flatStyles = (tree as any).props.style;
+      const hasSelectedBg = flatStyles.some
+        ? flatStyles.some((s: any) => s?.backgroundColor === '#BBDEFB')
+        : flatStyles?.backgroundColor === '#BBDEFB';
+      expect(hasSelectedBg).toBe(true);
+    });
+
+    it('should not apply selected style when isSelected is false', () => {
+      const { toJSON } = render(
+        <DayCell
+          day={10}
+          selectable={true}
+          isSelected={false}
+          onPress={mockOnPress}
+        />
+      );
+
+      const tree = toJSON();
+      const flatStyles = (tree as any).props.style;
+      const hasSelectedBg = flatStyles.some
+        ? flatStyles.some((s: any) => s?.backgroundColor === '#BBDEFB')
+        : flatStyles?.backgroundColor === '#BBDEFB';
+      expect(hasSelectedBg).toBe(false);
+    });
+  });
 });

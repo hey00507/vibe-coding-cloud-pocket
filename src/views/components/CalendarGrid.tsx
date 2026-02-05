@@ -8,6 +8,8 @@ interface CalendarGridProps {
   month: number;
   dailySummaries: DailySummary[];
   onDayPress: (date: Date) => void;
+  selectable?: boolean;
+  selectedDay?: number;
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -17,6 +19,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   month,
   dailySummaries,
   onDayPress,
+  selectable = false,
+  selectedDay,
 }) => {
   const getDaysInMonth = (y: number, m: number): number => {
     return new Date(y, m, 0).getDate();
@@ -105,6 +109,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
                 balance={summary?.balance}
                 isToday={day ? isToday(day) : false}
                 hasTransactions={!!summary}
+                selectable={selectable}
+                isSelected={day === selectedDay}
                 onPress={day ? () => handleDayPress(day) : undefined}
               />
             );

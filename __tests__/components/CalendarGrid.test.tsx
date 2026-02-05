@@ -86,4 +86,37 @@ describe('CalendarGrid', () => {
       expect(mockOnDayPress).toHaveBeenCalledWith(expect.any(Date));
     });
   });
+
+  describe('selectable mode', () => {
+    it('should allow pressing any day when selectable is true', () => {
+      render(
+        <CalendarGrid {...defaultProps} selectable={true} />
+      );
+
+      // 거래가 없는 날짜도 클릭 가능해야 함
+      fireEvent.press(screen.getByText('20'));
+
+      expect(mockOnDayPress).toHaveBeenCalledTimes(1);
+      expect(mockOnDayPress).toHaveBeenCalledWith(expect.any(Date));
+    });
+
+    it('should highlight selected day when selectedDay is provided', () => {
+      const { toJSON } = render(
+        <CalendarGrid {...defaultProps} selectable={true} selectedDay={15} />
+      );
+
+      // 렌더링이 성공해야 하고 selectedDay에 해당하는 날짜가 있어야 함
+      expect(screen.getByText('15')).toBeTruthy();
+      expect(toJSON()).toBeTruthy();
+    });
+
+    it('should not affect existing behavior when selectable is not provided', () => {
+      render(<CalendarGrid {...defaultProps} />);
+
+      // 거래 없는 날짜는 클릭해도 핸들러가 호출되지 않아야 함
+      fireEvent.press(screen.getByText('20'));
+
+      expect(mockOnDayPress).not.toHaveBeenCalled();
+    });
+  });
 });
