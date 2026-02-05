@@ -29,6 +29,9 @@ export default function HomeScreen(_props: HomeScreenProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [balance, setBalance] = useState(0);
 
   const loadData = useCallback(() => {
     const allTransactions = transactionService.getAll();
@@ -37,6 +40,11 @@ export default function HomeScreen(_props: HomeScreenProps) {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     setTransactions(sorted);
+
+    // 요약 데이터도 함께 갱신
+    setTotalIncome(transactionService.getTotalIncome());
+    setTotalExpense(transactionService.getTotalExpense());
+    setBalance(transactionService.getBalance());
   }, []);
 
   useFocusEffect(
@@ -55,10 +63,6 @@ export default function HomeScreen(_props: HomeScreenProps) {
     filter === 'all'
       ? transactions
       : transactions.filter((t) => t.type === filter);
-
-  const totalIncome = transactionService.getTotalIncome();
-  const totalExpense = transactionService.getTotalExpense();
-  const balance = transactionService.getBalance();
 
   const handleDelete = (id: string) => {
     transactionService.delete(id);

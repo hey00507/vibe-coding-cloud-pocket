@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { AddTransactionScreenProps } from '../../types/navigation';
 import {
   TransactionType,
@@ -35,18 +36,36 @@ export default function AddTransactionScreen({
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
 
-  useEffect(() => {
+  // 화면에 포커스될 때마다 카테고리/결제수단 새로고침
+  const loadData = useCallback(() => {
     const cats = categoryService.getByType(type);
     setCategories(cats);
-    setSelectedCategoryId(cats[0]?.id ?? '');
+    if (!selectedCategoryId || !cats.find((c) => c.id === selectedCategoryId)) {
+      setSelectedCategoryId(cats[0]?.id ?? '');
+    }
 
     const methods = paymentMethodService.getAll();
     setPaymentMethods(methods);
-    setSelectedPaymentMethodId(methods[0]?.id ?? '');
-  }, [type]);
+    if (
+      !selectedPaymentMethodId ||
+      !methods.find((m) => m.id === selectedPaymentMethodId)
+    ) {
+      setSelectedPaymentMethodId(methods[0]?.id ?? '');
+    }
+  }, [type, selectedCategoryId, selectedPaymentMethodId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const handleTypeChange = (newType: TransactionType) => {
     setType(newType);
+    // type 변경 시 해당 타입의 카테고리 로드
+    const cats = categoryService.getByType(newType);
+    setCategories(cats);
+    setSelectedCategoryId(cats[0]?.id ?? '');
   };
 
   const handleSubmit = () => {

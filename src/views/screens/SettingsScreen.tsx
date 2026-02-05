@@ -73,18 +73,14 @@ export default function SettingsScreen() {
     };
 
     categoryService.create(input);
-    setCategoryModalVisible(false);
 
-    Alert.alert('완료', `"${categoryName}" 카테고리가 생성되었습니다`, [
-      {
-        text: '확인',
-        onPress: () => {
-          setNewCategoryName('');
-          setNewCategoryIcon('');
-          loadCategories();
-        },
-      },
-    ]);
+    // 즉시 데이터 새로고침
+    setNewCategoryName('');
+    setNewCategoryIcon('');
+    setCategoryModalVisible(false);
+    loadCategories();
+
+    Alert.alert('완료', `"${categoryName}" 카테고리가 생성되었습니다`);
   };
 
   const handleDeleteCategory = (id: string, name: string) => {
@@ -95,9 +91,8 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: () => {
           categoryService.delete(id);
-          Alert.alert('완료', `"${name}" 카테고리가 삭제되었습니다`, [
-            { text: '확인', onPress: loadCategories },
-          ]);
+          loadCategories(); // 즉시 새로고침
+          Alert.alert('완료', `"${name}" 카테고리가 삭제되었습니다`);
         },
       },
     ]);
@@ -117,18 +112,14 @@ export default function SettingsScreen() {
     };
 
     paymentMethodService.create(input);
-    setPaymentModalVisible(false);
 
-    Alert.alert('완료', `"${methodName}" 결제수단이 생성되었습니다`, [
-      {
-        text: '확인',
-        onPress: () => {
-          setNewPaymentName('');
-          setNewPaymentIcon('');
-          loadPaymentMethods();
-        },
-      },
-    ]);
+    // 즉시 데이터 새로고침
+    setNewPaymentName('');
+    setNewPaymentIcon('');
+    setPaymentModalVisible(false);
+    loadPaymentMethods();
+
+    Alert.alert('완료', `"${methodName}" 결제수단이 생성되었습니다`);
   };
 
   const handleDeletePayment = (id: string, name: string) => {
@@ -139,9 +130,8 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: () => {
           paymentMethodService.delete(id);
-          Alert.alert('완료', `"${name}" 결제수단이 삭제되었습니다`, [
-            { text: '확인', onPress: loadPaymentMethods },
-          ]);
+          loadPaymentMethods(); // 즉시 새로고침
+          Alert.alert('완료', `"${name}" 결제수단이 삭제되었습니다`);
         },
       },
     ]);
