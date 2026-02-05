@@ -104,7 +104,7 @@ export default function AddTransactionScreen({
     const typeText = type === 'expense' ? '지출' : '수입';
     Alert.alert('완료', `${typeText} ${numAmount.toLocaleString()}원이 등록되었습니다`, [
       {
-        text: '확인',
+        text: '완료',
         onPress: () => {
           setAmount('');
           setMemo('');
@@ -112,7 +112,7 @@ export default function AddTransactionScreen({
         },
       },
       {
-        text: '계속 등록하기',
+        text: '계속 등록',
         onPress: () => {
           setAmount('');
           setMemo('');

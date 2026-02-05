@@ -239,8 +239,8 @@ describe('AddTransactionScreen', () => {
         '완료',
         '지출 15,000원이 등록되었습니다',
         expect.arrayContaining([
-          expect.objectContaining({ text: '확인' }),
-          expect.objectContaining({ text: '계속 등록하기' }),
+          expect.objectContaining({ text: '완료' }),
+          expect.objectContaining({ text: '계속 등록' }),
         ])
       );
     });
@@ -323,7 +323,7 @@ describe('AddTransactionScreen', () => {
       // Alert의 "확인" 콜백 실행
       const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
       const confirmButton = alertCall[2].find(
-        (btn: any) => btn.text === '확인'
+        (btn: any) => btn.text === '완료'
       );
       confirmButton.onPress();
 
@@ -353,7 +353,7 @@ describe('AddTransactionScreen', () => {
       // "계속 등록하기" 콜백 실행
       const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
       const continueButton = alertCall[2].find(
-        (btn: any) => btn.text === '계속 등록하기'
+        (btn: any) => btn.text === '계속 등록'
       );
       act(() => {
         continueButton.onPress();
