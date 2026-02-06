@@ -7,6 +7,7 @@ import { RootTabParamList } from './src/types/navigation';
 
 import HomeScreen from './src/views/screens/HomeScreen';
 import AddTransactionScreen from './src/views/screens/AddTransactionScreen';
+import StatisticsScreen from './src/views/screens/StatisticsScreen';
 import SettingsScreen from './src/views/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -53,6 +54,15 @@ export default function App() {
             title: '거래 추가',
             tabBarLabel: '추가',
             tabBarIcon: () => <TabIcon label="➕" />,
+          }}
+        />
+        <Tab.Screen
+          name="Statistics"
+          component={StatisticsScreen}
+          options={{
+            title: '통계',
+            tabBarLabel: '통계',
+            tabBarIcon: () => <TabIcon label="📊" />,
           }}
         />
         <Tab.Screen
