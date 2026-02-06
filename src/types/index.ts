@@ -56,3 +56,30 @@ export interface DailySummary {
   balance: number; // income - expense
   transactionCount: number;
 }
+
+// 기간 유형 (통계)
+export type PeriodType = 'monthly' | 'yearly';
+
+// 기간별 요약 (통계)
+export interface PeriodSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  transactionCount: number;
+}
+
+// 카테고리별 집계 (통계)
+export interface CategoryBreakdown {
+  categoryId: string;
+  amount: number;
+  percentage: number;
+  transactionCount: number;
+}
+
+// 결제수단별 집계 (통계)
+export interface PaymentMethodBreakdown {
+  paymentMethodId: string;
+  amount: number;
+  percentage: number;
+  transactionCount: number;
+}

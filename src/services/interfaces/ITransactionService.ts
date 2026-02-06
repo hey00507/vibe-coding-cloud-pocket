@@ -4,6 +4,9 @@ import {
   UpdateTransactionInput,
   TransactionType,
   DailySummary,
+  PeriodSummary,
+  CategoryBreakdown,
+  PaymentMethodBreakdown,
 } from '../../types';
 
 /**
@@ -112,4 +115,45 @@ export interface ITransactionService {
    * @returns 해당 월의 일별 요약 배열
    */
   getDailySummaries(year: number, month: number): DailySummary[];
+
+  /**
+   * 월별 요약 조회
+   * @param year 연도
+   * @param month 월 (1-12)
+   * @returns 해당 월의 수입/지출/잔액/거래수
+   */
+  getMonthlySummary(year: number, month: number): PeriodSummary;
+
+  /**
+   * 연도별 요약 조회
+   * @param year 연도
+   * @returns 해당 연도의 수입/지출/잔액/거래수
+   */
+  getYearlySummary(year: number): PeriodSummary;
+
+  /**
+   * 카테고리별 집계 조회
+   * @param startDate 시작 날짜
+   * @param endDate 종료 날짜
+   * @param type 거래 유형 필터 (선택)
+   * @returns 카테고리별 금액/비율 배열 (금액 내림차순)
+   */
+  getCategoryBreakdown(
+    startDate: Date,
+    endDate: Date,
+    type?: TransactionType
+  ): CategoryBreakdown[];
+
+  /**
+   * 결제수단별 집계 조회
+   * @param startDate 시작 날짜
+   * @param endDate 종료 날짜
+   * @param type 거래 유형 필터 (선택)
+   * @returns 결제수단별 금액/비율 배열 (금액 내림차순)
+   */
+  getPaymentMethodBreakdown(
+    startDate: Date,
+    endDate: Date,
+    type?: TransactionType
+  ): PaymentMethodBreakdown[];
 }
