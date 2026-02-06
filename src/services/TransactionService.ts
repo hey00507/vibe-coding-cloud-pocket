@@ -4,6 +4,9 @@ import {
   UpdateTransactionInput,
   TransactionType,
   DailySummary,
+  PeriodSummary,
+  CategoryBreakdown,
+  PaymentMethodBreakdown,
 } from '../types';
 import { ITransactionService } from './interfaces/ITransactionService';
 
@@ -153,6 +156,123 @@ export class TransactionService implements ITransactionService {
 
     // 날짜순 정렬
     return summaries.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  getMonthlySummary(year: number, month: number): PeriodSummary {
+    const transactions = this.getAll().filter((t) => {
+      const d = t.date;
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    });
+
+    return this.buildPeriodSummary(transactions);
+  }
+
+  getYearlySummary(year: number): PeriodSummary {
+    const transactions = this.getAll().filter(
+      (t) => t.date.getFullYear() === year
+    );
+
+    return this.buildPeriodSummary(transactions);
+  }
+
+  getCategoryBreakdown(
+    startDate: Date,
+    endDate: Date,
+    type?: TransactionType
+  ): CategoryBreakdown[] {
+    let transactions = this.getByDateRange(startDate, endDate);
+    if (type) {
+      transactions = transactions.filter((t) => t.type === type);
+    }
+
+    if (transactions.length === 0) return [];
+
+    const map = new Map<
+      string,
+      { amount: number; transactionCount: number }
+    >();
+    transactions.forEach((t) => {
+      const existing = map.get(t.categoryId) || {
+        amount: 0,
+        transactionCount: 0,
+      };
+      map.set(t.categoryId, {
+        amount: existing.amount + t.amount,
+        transactionCount: existing.transactionCount + 1,
+      });
+    });
+
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+    const result: CategoryBreakdown[] = [];
+    map.forEach((value, categoryId) => {
+      result.push({
+        categoryId,
+        amount: value.amount,
+        percentage: Math.round((value.amount / totalAmount) * 100),
+        transactionCount: value.transactionCount,
+      });
+    });
+
+    return result.sort((a, b) => b.amount - a.amount);
+  }
+
+  getPaymentMethodBreakdown(
+    startDate: Date,
+    endDate: Date,
+    type?: TransactionType
+  ): PaymentMethodBreakdown[] {
+    let transactions = this.getByDateRange(startDate, endDate);
+    if (type) {
+      transactions = transactions.filter((t) => t.type === type);
+    }
+
+    if (transactions.length === 0) return [];
+
+    const map = new Map<
+      string,
+      { amount: number; transactionCount: number }
+    >();
+    transactions.forEach((t) => {
+      const existing = map.get(t.paymentMethodId) || {
+        amount: 0,
+        transactionCount: 0,
+      };
+      map.set(t.paymentMethodId, {
+        amount: existing.amount + t.amount,
+        transactionCount: existing.transactionCount + 1,
+      });
+    });
+
+    const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+    const result: PaymentMethodBreakdown[] = [];
+    map.forEach((value, paymentMethodId) => {
+      result.push({
+        paymentMethodId,
+        amount: value.amount,
+        percentage: Math.round((value.amount / totalAmount) * 100),
+        transactionCount: value.transactionCount,
+      });
+    });
+
+    return result.sort((a, b) => b.amount - a.amount);
+  }
+
+  private buildPeriodSummary(transactions: Transaction[]): PeriodSummary {
+    const totalIncome = transactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = transactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      totalIncome,
+      totalExpense,
+      balance: totalIncome - totalExpense,
+      transactionCount: transactions.length,
+    };
   }
 
   private formatDateToString(date: Date): string {

@@ -1,6 +1,12 @@
 import { TransactionService } from '../../src/services/TransactionService';
 import { ITransactionService } from '../../src/services/interfaces/ITransactionService';
-import { CreateTransactionInput, Transaction } from '../../src/types';
+import {
+  CreateTransactionInput,
+  Transaction,
+  PeriodSummary,
+  CategoryBreakdown,
+  PaymentMethodBreakdown,
+} from '../../src/types';
 
 describe('TransactionService', () => {
   let service: ITransactionService;
@@ -519,6 +525,417 @@ describe('TransactionService', () => {
 
       expect(result[0].date).toBe('2024-01-15');
       expect(result[1].date).toBe('2024-01-20');
+    });
+  });
+
+  describe('getMonthlySummary', () => {
+    it('should return zeros when no transactions in month', () => {
+      const result = service.getMonthlySummary(2024, 3);
+
+      expect(result).toEqual({
+        totalIncome: 0,
+        totalExpense: 0,
+        balance: 0,
+        transactionCount: 0,
+      });
+    });
+
+    it('should return correct summary for a month with transactions', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 20000,
+          date: new Date('2024-01-20'),
+        })
+      );
+
+      const result = service.getMonthlySummary(2024, 1);
+
+      expect(result.totalIncome).toBe(100000);
+      expect(result.totalExpense).toBe(50000);
+      expect(result.balance).toBe(50000);
+      expect(result.transactionCount).toBe(3);
+    });
+
+    it('should exclude transactions from other months', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          date: new Date('2024-02-10'),
+        })
+      );
+
+      const result = service.getMonthlySummary(2024, 1);
+
+      expect(result.totalIncome).toBe(100000);
+      expect(result.totalExpense).toBe(0);
+      expect(result.transactionCount).toBe(1);
+    });
+  });
+
+  describe('getYearlySummary', () => {
+    it('should return zeros when no transactions in year', () => {
+      const result = service.getYearlySummary(2025);
+
+      expect(result).toEqual({
+        totalIncome: 0,
+        totalExpense: 0,
+        balance: 0,
+        transactionCount: 0,
+      });
+    });
+
+    it('should aggregate transactions across multiple months', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          date: new Date('2024-03-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 200000,
+          date: new Date('2024-06-20'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          date: new Date('2024-12-01'),
+        })
+      );
+
+      const result = service.getYearlySummary(2024);
+
+      expect(result.totalIncome).toBe(300000);
+      expect(result.totalExpense).toBe(80000);
+      expect(result.balance).toBe(220000);
+      expect(result.transactionCount).toBe(4);
+    });
+
+    it('should exclude transactions from other years', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          date: new Date('2024-06-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          date: new Date('2023-06-15'),
+        })
+      );
+
+      const result = service.getYearlySummary(2024);
+
+      expect(result.totalIncome).toBe(100000);
+      expect(result.totalExpense).toBe(0);
+      expect(result.transactionCount).toBe(1);
+    });
+  });
+
+  describe('getCategoryBreakdown', () => {
+    it('should return empty array when no transactions in range', () => {
+      const result = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return category breakdown with correct percentages', () => {
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 60000,
+          categoryId: 'food',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          categoryId: 'transport',
+          date: new Date('2024-01-15'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 10000,
+          categoryId: 'food',
+          date: new Date('2024-01-20'),
+        })
+      );
+
+      const result = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toHaveLength(2);
+      // food: 70000 (70%), transport: 30000 (30%)
+      expect(result[0].categoryId).toBe('food');
+      expect(result[0].amount).toBe(70000);
+      expect(result[0].percentage).toBe(70);
+      expect(result[0].transactionCount).toBe(2);
+
+      expect(result[1].categoryId).toBe('transport');
+      expect(result[1].amount).toBe(30000);
+      expect(result[1].percentage).toBe(30);
+      expect(result[1].transactionCount).toBe(1);
+    });
+
+    it('should sort by amount descending', () => {
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 10000,
+          categoryId: 'misc',
+          date: new Date('2024-01-05'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          categoryId: 'food',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          categoryId: 'transport',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const result = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result[0].categoryId).toBe('food');
+      expect(result[1].categoryId).toBe('transport');
+      expect(result[2].categoryId).toBe('misc');
+    });
+
+    it('should filter by type when provided', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          categoryId: 'salary',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          categoryId: 'food',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const expenseResult = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31'),
+        'expense'
+      );
+
+      expect(expenseResult).toHaveLength(1);
+      expect(expenseResult[0].categoryId).toBe('food');
+      expect(expenseResult[0].percentage).toBe(100);
+
+      const incomeResult = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31'),
+        'income'
+      );
+
+      expect(incomeResult).toHaveLength(1);
+      expect(incomeResult[0].categoryId).toBe('salary');
+      expect(incomeResult[0].percentage).toBe(100);
+    });
+
+    it('should include all types when type filter is not provided', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          categoryId: 'salary',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          categoryId: 'food',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const result = service.getCategoryBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toHaveLength(2);
+      // percentages should sum to 100 (rounding)
+      const totalPercentage = result.reduce((sum, r) => sum + r.percentage, 0);
+      expect(totalPercentage).toBeCloseTo(100, 0);
+    });
+  });
+
+  describe('getPaymentMethodBreakdown', () => {
+    it('should return empty array when no transactions in range', () => {
+      const result = service.getPaymentMethodBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return payment method breakdown with correct percentages', () => {
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 80000,
+          paymentMethodId: 'card',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 20000,
+          paymentMethodId: 'cash',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const result = service.getPaymentMethodBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].paymentMethodId).toBe('card');
+      expect(result[0].amount).toBe(80000);
+      expect(result[0].percentage).toBe(80);
+      expect(result[0].transactionCount).toBe(1);
+
+      expect(result[1].paymentMethodId).toBe('cash');
+      expect(result[1].amount).toBe(20000);
+      expect(result[1].percentage).toBe(20);
+      expect(result[1].transactionCount).toBe(1);
+    });
+
+    it('should sort by amount descending', () => {
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 10000,
+          paymentMethodId: 'cash',
+          date: new Date('2024-01-05'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 50000,
+          paymentMethodId: 'card',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          paymentMethodId: 'transfer',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const result = service.getPaymentMethodBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31')
+      );
+
+      expect(result[0].paymentMethodId).toBe('card');
+      expect(result[1].paymentMethodId).toBe('transfer');
+      expect(result[2].paymentMethodId).toBe('cash');
+    });
+
+    it('should filter by type when provided', () => {
+      service.create(
+        createTestInput({
+          type: 'income',
+          amount: 100000,
+          paymentMethodId: 'transfer',
+          date: new Date('2024-01-10'),
+        })
+      );
+      service.create(
+        createTestInput({
+          type: 'expense',
+          amount: 30000,
+          paymentMethodId: 'card',
+          date: new Date('2024-01-15'),
+        })
+      );
+
+      const result = service.getPaymentMethodBreakdown(
+        new Date('2024-01-01'),
+        new Date('2024-01-31'),
+        'expense'
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].paymentMethodId).toBe('card');
+      expect(result[0].percentage).toBe(100);
     });
   });
 });
