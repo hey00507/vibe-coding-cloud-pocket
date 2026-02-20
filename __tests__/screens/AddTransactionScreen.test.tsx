@@ -6,7 +6,8 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
-} from '../../src/views/screens/HomeScreen';
+  subCategoryService,
+} from '../../src/services/ServiceRegistry';
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');
@@ -35,6 +36,7 @@ describe('AddTransactionScreen', () => {
     transactionService.clear();
     categoryService.clear();
     paymentMethodService.clear();
+    subCategoryService.clear();
     mockNavigation.navigate.mockClear();
     (Alert.alert as jest.Mock).mockClear();
 
@@ -135,9 +137,8 @@ describe('AddTransactionScreen', () => {
         />
       );
 
-      // 수입 버튼 클릭
       const incomeButtons = screen.getAllByText('수입');
-      fireEvent.press(incomeButtons[0]); // 타입 선택 버튼
+      fireEvent.press(incomeButtons[0]);
 
       expect(screen.getByText('수입 추가')).toBeTruthy();
     });
@@ -161,11 +162,62 @@ describe('AddTransactionScreen', () => {
         />
       );
 
-      // 수입 타입으로 변경
       const incomeButtons = screen.getAllByText('수입');
       fireEvent.press(incomeButtons[0]);
 
       expect(screen.getByText('💰 급여')).toBeTruthy();
+    });
+  });
+
+  describe('sub-category selection', () => {
+    it('should show sub-categories when expense category has sub-categories', () => {
+      const cat = categoryService.getByType('expense')[0];
+      subCategoryService.create({ categoryId: cat.id, name: '외식', icon: '🍽️' });
+      subCategoryService.create({ categoryId: cat.id, name: '간식', icon: '☕' });
+
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      expect(screen.getByText('소분류')).toBeTruthy();
+      expect(screen.getByText('🍽️ 외식')).toBeTruthy();
+      expect(screen.getByText('☕ 간식')).toBeTruthy();
+    });
+
+    it('should not show sub-category section for income type', () => {
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      const incomeButtons = screen.getAllByText('수입');
+      fireEvent.press(incomeButtons[0]);
+
+      expect(screen.queryByText('소분류')).toBeNull();
+    });
+
+    it('should include subCategoryId in transaction when sub-category is selected', () => {
+      const cat = categoryService.getByType('expense')[0];
+      const sub = subCategoryService.create({ categoryId: cat.id, name: '외식', icon: '🍽️' });
+
+      render(
+        <AddTransactionScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'AddTransaction', name: 'AddTransaction' }}
+        />
+      );
+
+      fireEvent.changeText(screen.getByPlaceholderText('0'), '15000');
+      fireEvent.press(screen.getByText('지출 추가'));
+
+      const transactions = transactionService.getAll();
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].subCategoryId).toBe(sub.id);
     });
   });
 
@@ -289,7 +341,6 @@ describe('AddTransactionScreen', () => {
         />
       );
 
-      // 어제 날짜 선택
       fireEvent.press(screen.getByText('어제'));
 
       fireEvent.changeText(screen.getByPlaceholderText('0'), '10000');
@@ -297,7 +348,6 @@ describe('AddTransactionScreen', () => {
 
       const transactions = transactionService.getAll();
       expect(transactions).toHaveLength(1);
-      // 어제 날짜여야 함
       const txDate = new Date(transactions[0].date);
       expect(txDate.getDate()).toBe(5);
 
@@ -320,7 +370,6 @@ describe('AddTransactionScreen', () => {
       fireEvent.changeText(screen.getByPlaceholderText('0'), '15000');
       fireEvent.press(screen.getByText('지출 추가'));
 
-      // Alert의 "확인" 콜백 실행
       const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
       const confirmButton = alertCall[2].find(
         (btn: any) => btn.text === '완료'
@@ -345,12 +394,10 @@ describe('AddTransactionScreen', () => {
         />
       );
 
-      // 어제 날짜 선택
       fireEvent.press(screen.getByText('어제'));
       fireEvent.changeText(screen.getByPlaceholderText('0'), '15000');
       fireEvent.press(screen.getByText('지출 추가'));
 
-      // "계속 등록하기" 콜백 실행
       const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
       const continueButton = alertCall[2].find(
         (btn: any) => btn.text === '계속 등록'
@@ -359,9 +406,7 @@ describe('AddTransactionScreen', () => {
         continueButton.onPress();
       });
 
-      // 금액 초기화 확인
       expect(screen.getByPlaceholderText('0').props.value).toBe('');
-      // 날짜가 오늘로 리셋 (2026-02-06)
       expect(screen.getByText('2026년 2월 6일 (금)')).toBeTruthy();
 
       jest.useRealTimers();

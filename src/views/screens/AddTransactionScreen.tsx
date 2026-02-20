@@ -15,6 +15,7 @@ import { AddTransactionScreenProps } from '../../types/navigation';
 import {
   TransactionType,
   Category,
+  SubCategory,
   PaymentMethod,
   CreateTransactionInput,
 } from '../../types';
@@ -22,7 +23,8 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
-} from './HomeScreen';
+  subCategoryService,
+} from '../../services/ServiceRegistry';
 import DateSelector from '../components/DateSelector';
 
 export default function AddTransactionScreen({
@@ -33,17 +35,38 @@ export default function AddTransactionScreen({
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string>('');
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] =
     useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  // 소분류 로드
+  const loadSubCategories = useCallback((categoryId: string) => {
+    if (categoryId) {
+      const subs = subCategoryService.getByCategoryId(categoryId);
+      setSubCategories(subs);
+      setSelectedSubCategoryId(subs[0]?.id ?? '');
+    } else {
+      setSubCategories([]);
+      setSelectedSubCategoryId('');
+    }
+  }, []);
 
   // 화면에 포커스될 때마다 카테고리/결제수단 새로고침
   const loadData = useCallback(() => {
     const cats = categoryService.getByType(type);
     setCategories(cats);
     if (!selectedCategoryId || !cats.find((c) => c.id === selectedCategoryId)) {
-      setSelectedCategoryId(cats[0]?.id ?? '');
+      const firstCatId = cats[0]?.id ?? '';
+      setSelectedCategoryId(firstCatId);
+      if (type === 'expense') {
+        loadSubCategories(firstCatId);
+      } else {
+        setSubCategories([]);
+        setSelectedSubCategoryId('');
+      }
     }
 
     const methods = paymentMethodService.getAll();
@@ -54,7 +77,7 @@ export default function AddTransactionScreen({
     ) {
       setSelectedPaymentMethodId(methods[0]?.id ?? '');
     }
-  }, [type, selectedCategoryId, selectedPaymentMethodId]);
+  }, [type, selectedCategoryId, selectedPaymentMethodId, loadSubCategories]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,10 +87,24 @@ export default function AddTransactionScreen({
 
   const handleTypeChange = (newType: TransactionType) => {
     setType(newType);
-    // type 변경 시 해당 타입의 카테고리 로드
     const cats = categoryService.getByType(newType);
     setCategories(cats);
-    setSelectedCategoryId(cats[0]?.id ?? '');
+    const firstCatId = cats[0]?.id ?? '';
+    setSelectedCategoryId(firstCatId);
+
+    if (newType === 'expense') {
+      loadSubCategories(firstCatId);
+    } else {
+      setSubCategories([]);
+      setSelectedSubCategoryId('');
+    }
+  };
+
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    if (type === 'expense') {
+      loadSubCategories(categoryId);
+    }
   };
 
   const handleSubmit = () => {
@@ -93,6 +130,7 @@ export default function AddTransactionScreen({
       amount: numAmount,
       date: selectedDate,
       categoryId: selectedCategoryId,
+      subCategoryId: selectedSubCategoryId || undefined,
       paymentMethodId: selectedPaymentMethodId,
       memo: memo.trim() || undefined,
     };
@@ -203,7 +241,7 @@ export default function AddTransactionScreen({
                     styles.optionButton,
                     selectedCategoryId === cat.id && styles.optionButtonActive,
                   ]}
-                  onPress={() => setSelectedCategoryId(cat.id)}
+                  onPress={() => handleCategorySelect(cat.id)}
                 >
                   <Text
                     style={[
@@ -219,6 +257,35 @@ export default function AddTransactionScreen({
             </View>
           )}
         </View>
+
+        {/* 소분류 선택 (지출일 때만, 소분류가 있을 때만) */}
+        {type === 'expense' && subCategories.length > 0 && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>소분류</Text>
+            <View style={styles.optionsContainer}>
+              {subCategories.map((sub) => (
+                <TouchableOpacity
+                  key={sub.id}
+                  style={[
+                    styles.optionButton,
+                    selectedSubCategoryId === sub.id && styles.optionButtonActive,
+                  ]}
+                  onPress={() => setSelectedSubCategoryId(sub.id)}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selectedSubCategoryId === sub.id && styles.optionTextActive,
+                    ]}
+                  >
+                    {sub.icon ? `${sub.icon} ` : ''}
+                    {sub.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>결제수단</Text>
