@@ -5,6 +5,7 @@ import { Transaction } from '../../types';
 interface TransactionItemProps {
   transaction: Transaction;
   categoryName: string;
+  subCategoryName?: string;
   paymentMethodName: string;
   onDelete: () => void;
 }
@@ -21,6 +22,7 @@ const formatDate = (date: Date): string => {
 export default function TransactionItem({
   transaction,
   categoryName,
+  subCategoryName,
   paymentMethodName,
   onDelete,
 }: TransactionItemProps) {
@@ -30,7 +32,9 @@ export default function TransactionItem({
     <View style={styles.container}>
       <View style={styles.leftSection}>
         <View style={styles.header}>
-          <Text style={styles.category}>{categoryName}</Text>
+          <Text style={styles.category}>
+            {subCategoryName ? `${categoryName} > ${subCategoryName}` : categoryName}
+          </Text>
           <Text style={styles.date}>{formatDate(transaction.date)}</Text>
         </View>
         <Text style={styles.paymentMethod}>{paymentMethodName}</Text>

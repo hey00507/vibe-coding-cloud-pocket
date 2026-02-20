@@ -159,6 +159,36 @@ describe('TransactionItem', () => {
     });
   });
 
+  describe('subcategory display', () => {
+    it('should display category > subcategory when subCategoryName is provided', () => {
+      render(
+        <TransactionItem
+          transaction={createMockTransaction()}
+          categoryName="식비"
+          subCategoryName="간식/카페"
+          paymentMethodName="신용카드"
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.getByText('식비 > 간식/카페')).toBeTruthy();
+    });
+
+    it('should display only category name when subCategoryName is not provided', () => {
+      render(
+        <TransactionItem
+          transaction={createMockTransaction()}
+          categoryName="식비"
+          paymentMethodName="신용카드"
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.getByText('식비')).toBeTruthy();
+      expect(screen.queryByText('>')).toBeNull();
+    });
+  });
+
   describe('interactions', () => {
     it('should call onDelete when delete button is pressed', () => {
       render(
