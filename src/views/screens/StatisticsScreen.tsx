@@ -12,7 +12,7 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
-} from './HomeScreen';
+} from '../../services/ServiceRegistry';
 import PeriodSelector from '../components/PeriodSelector';
 import SummaryCard from '../components/SummaryCard';
 import BreakdownList, { BreakdownItem } from '../components/BreakdownList';

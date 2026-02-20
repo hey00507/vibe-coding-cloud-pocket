@@ -5,7 +5,7 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
-} from '../../src/views/screens/HomeScreen';
+} from '../../src/services/ServiceRegistry';
 
 // Mock navigation
 const mockNavigation = {

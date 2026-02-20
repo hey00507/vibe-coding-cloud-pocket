@@ -11,9 +11,12 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { HomeScreenProps } from '../../types/navigation';
 import { Transaction, TransactionType, DailySummary, Category, PaymentMethod } from '../../types';
-import { TransactionService } from '../../services/TransactionService';
-import { CategoryService } from '../../services/CategoryService';
-import { PaymentMethodService } from '../../services/PaymentMethodService';
+import {
+  transactionService,
+  categoryService,
+  paymentMethodService,
+  subCategoryService,
+} from '../../services/ServiceRegistry';
 import TransactionItem from '../components/TransactionItem';
 import SummaryCard from '../components/SummaryCard';
 import ViewToggle, { ViewMode } from '../components/ViewToggle';
@@ -21,12 +24,8 @@ import CalendarHeader from '../components/CalendarHeader';
 import CalendarGrid from '../components/CalendarGrid';
 import DayDetailModal from '../components/DayDetailModal';
 
-const transactionService = new TransactionService();
-const categoryService = new CategoryService();
-const paymentMethodService = new PaymentMethodService();
-
-// 전역 서비스 인스턴스 export (다른 화면에서 사용)
-export { transactionService, categoryService, paymentMethodService };
+// 하위 호환: 기존 HomeScreen에서 서비스를 import하는 코드를 위해 re-export
+export { transactionService, categoryService, paymentMethodService, subCategoryService };
 
 type FilterType = 'all' | TransactionType;
 
@@ -121,6 +120,12 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     return category?.name ?? '미분류';
   };
 
+  const getSubCategoryName = (subCategoryId?: string): string | undefined => {
+    if (!subCategoryId) return undefined;
+    const sub = subCategoryService.getById(subCategoryId);
+    return sub?.name;
+  };
+
   const getPaymentMethodName = (paymentMethodId: string): string => {
     const method = paymentMethodService.getById(paymentMethodId);
     return method?.name ?? '미지정';
@@ -157,6 +162,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     <TransactionItem
       transaction={item}
       categoryName={getCategoryName(item.categoryId)}
+      subCategoryName={getSubCategoryName(item.subCategoryId)}
       paymentMethodName={getPaymentMethodName(item.paymentMethodId)}
       onDelete={() => handleDelete(item.id)}
     />
