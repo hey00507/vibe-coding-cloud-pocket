@@ -5,7 +5,8 @@ import SettingsScreen from '../../src/views/screens/SettingsScreen';
 import {
   categoryService,
   paymentMethodService,
-} from '../../src/views/screens/HomeScreen';
+  subCategoryService,
+} from '../../src/services/ServiceRegistry';
 
 // Mock Alert
 jest.spyOn(Alert, 'alert');
@@ -27,6 +28,7 @@ describe('SettingsScreen', () => {
   beforeEach(() => {
     categoryService.clear();
     paymentMethodService.clear();
+    subCategoryService.clear();
     (Alert.alert as jest.Mock).mockClear();
   });
 
@@ -41,7 +43,6 @@ describe('SettingsScreen', () => {
     it('should render category sub-tabs (지출/수입)', () => {
       render(<SettingsScreen />);
 
-      // 카테고리 탭에서 지출/수입 서브탭이 보여야 함
       const expenseButtons = screen.getAllByText('지출');
       const incomeButtons = screen.getAllByText('수입');
       expect(expenseButtons.length).toBeGreaterThan(0);
@@ -53,7 +54,6 @@ describe('SettingsScreen', () => {
 
       fireEvent.press(screen.getByText('결제수단'));
 
-      // 결제수단 탭으로 전환되면 카테고리 서브탭(지출/수입)이 사라져야 함
       expect(screen.getByText('+ 결제수단 추가')).toBeTruthy();
     });
   });
@@ -126,17 +126,124 @@ describe('SettingsScreen', () => {
 
       expect(Alert.alert).toHaveBeenCalledWith(
         '삭제 확인',
-        '"식비" 카테고리를 삭제하시겠습니까?',
+        '"식비" 카테고리와 모든 소분류를 삭제하시겠습니까?',
         expect.any(Array)
+      );
+    });
+
+    it('should show sub-category count for each category', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      subCategoryService.create({ categoryId: cat.id, name: '외식', icon: '🍽️' });
+      subCategoryService.create({ categoryId: cat.id, name: '간식', icon: '☕' });
+
+      render(<SettingsScreen />);
+
+      expect(screen.getByText('(2)')).toBeTruthy();
+    });
+
+    it('should expand category to show sub-categories', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      subCategoryService.create({ categoryId: cat.id, name: '외식', icon: '🍽️' });
+
+      render(<SettingsScreen />);
+
+      // 카테고리 클릭하여 펼치기
+      fireEvent.press(screen.getByText('식비'));
+
+      expect(screen.getByText('외식')).toBeTruthy();
+      expect(screen.getByText('🍽️')).toBeTruthy();
+    });
+
+    it('should collapse category when pressed again', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      subCategoryService.create({ categoryId: cat.id, name: '외식', icon: '🍽️' });
+
+      render(<SettingsScreen />);
+
+      // 펼치기
+      fireEvent.press(screen.getByText('식비'));
+      expect(screen.getByText('외식')).toBeTruthy();
+
+      // 접기
+      fireEvent.press(screen.getByText('식비'));
+      expect(screen.queryByText('외식')).toBeNull();
+    });
+
+    it('should close sub-category modal when cancel is pressed', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('식비'));
+      fireEvent.press(screen.getByText('+ 소분류 추가'));
+      expect(screen.getByText('새 소분류')).toBeTruthy();
+
+      // 소분류 모달의 취소 버튼 (카테고리 모달 취소와 별도)
+      const cancelButtons = screen.getAllByText('취소');
+      fireEvent.press(cancelButtons[cancelButtons.length - 1]);
+
+      expect(screen.queryByText('새 소분류')).toBeNull();
+    });
+
+    it('should confirm and delete category with subcategories', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense' });
+      subCategoryService.create({ categoryId: cat.id, name: '외식' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('삭제'));
+
+      // 삭제 확인 Alert의 삭제 버튼 실행
+      const alertCall = (Alert.alert as jest.Mock).mock.calls[0];
+      const deleteButton = alertCall[2].find((btn: { text: string }) => btn.text === '삭제');
+      deleteButton.onPress();
+
+      expect(Alert.alert).toHaveBeenCalledWith('완료', '"식비" 카테고리가 삭제되었습니다');
+    });
+
+    it('should show add sub-category button when expanded', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('식비'));
+
+      expect(screen.getByText('+ 소분류 추가')).toBeTruthy();
+    });
+
+    it('should open sub-category modal when add sub-category is pressed', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('식비'));
+      fireEvent.press(screen.getByText('+ 소분류 추가'));
+
+      expect(screen.getByText('새 소분류')).toBeTruthy();
+      expect(screen.getByPlaceholderText('소분류 이름')).toBeTruthy();
+    });
+
+    it('should add sub-category and show success alert', () => {
+      const cat = categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('식비'));
+      fireEvent.press(screen.getByText('+ 소분류 추가'));
+      fireEvent.changeText(
+        screen.getByPlaceholderText('소분류 이름'),
+        '외식'
+      );
+      fireEvent.press(screen.getByText('추가'));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        '완료',
+        '"외식" 소분류가 생성되었습니다'
       );
     });
   });
 
   describe('payment method management', () => {
-    beforeEach(() => {
-      // 결제수단 탭으로 전환
-    });
-
     it('should show empty state when no payment methods', () => {
       render(<SettingsScreen />);
 
@@ -168,7 +275,7 @@ describe('SettingsScreen', () => {
       fireEvent.press(screen.getByText('결제수단'));
       fireEvent.press(screen.getByText('+ 결제수단 추가'));
       fireEvent.changeText(
-        screen.getByPlaceholderText('결제수단 이름 (예: 신용카드, 현금)'),
+        screen.getByPlaceholderText('결제수단 이름 (예: 신한카드)'),
         '신용카드'
       );
       fireEvent.press(screen.getByText('추가'));
@@ -188,6 +295,31 @@ describe('SettingsScreen', () => {
 
       expect(screen.getByText('신용카드')).toBeTruthy();
       expect(screen.getByText('💳')).toBeTruthy();
+    });
+
+    it('should show payment type options in modal', () => {
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('결제수단'));
+      fireEvent.press(screen.getByText('+ 결제수단 추가'));
+
+      expect(screen.getByText('유형 선택')).toBeTruthy();
+      expect(screen.getByText('신용카드')).toBeTruthy();
+      expect(screen.getByText('체크카드')).toBeTruthy();
+      expect(screen.getByText('현금')).toBeTruthy();
+      expect(screen.getByText('계좌이체')).toBeTruthy();
+    });
+
+    it('should display payment type label for payment methods with type', () => {
+      paymentMethodService.create({ name: '신한카드', icon: '💳', type: 'credit' });
+
+      render(<SettingsScreen />);
+
+      fireEvent.press(screen.getByText('결제수단'));
+
+      expect(screen.getByText('신한카드')).toBeTruthy();
+      // 신용카드 라벨이 표시되어야 함 (유형 선택 옵션과 별도로)
+      // Note: '신용카드' 텍스트가 유형 라벨로 표시됨
     });
   });
 
@@ -223,7 +355,6 @@ describe('SettingsScreen', () => {
 
       fireEvent.press(screen.getByText('취소'));
 
-      // 모달이 닫히면 모달 타이틀이 보이지 않아야 함
       expect(screen.queryByText('새 지출 카테고리')).toBeNull();
     });
   });

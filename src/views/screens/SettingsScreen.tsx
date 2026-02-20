@@ -12,17 +12,33 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Category,
+  SubCategory,
   PaymentMethod,
   TransactionType,
   CreateCategoryInput,
+  CreateSubCategoryInput,
   CreatePaymentMethodInput,
+  PaymentMethodType,
 } from '../../types';
-import { categoryService, paymentMethodService } from './HomeScreen';
+import {
+  categoryService,
+  paymentMethodService,
+  subCategoryService,
+} from '../../services/ServiceRegistry';
+import CategoryGroupItem from '../components/CategoryGroupItem';
 
 type TabType = 'category' | 'paymentMethod';
 
 const CATEGORY_ICONS = ['🍔', '🚗', '🏠', '💡', '🎮', '👕', '💊', '📚', '✈️', '💰', '💼', '🎁'];
+const SUB_CATEGORY_ICONS = ['📋', '🛒', '🍽️', '☕', '🛵', '🚌', '🚕', '⛽', '🧻', '🏥', '🎬', '🎨', '🎓', '💐', '🐾', '🦴'];
 const PAYMENT_ICONS = ['💳', '💵', '🏦', '📱', '💰', '🪙', '💸', '🏧'];
+
+const PAYMENT_TYPE_OPTIONS: { label: string; value: PaymentMethodType }[] = [
+  { label: '신용카드', value: 'credit' },
+  { label: '체크카드', value: 'debit' },
+  { label: '현금', value: 'cash' },
+  { label: '계좌이체', value: 'account' },
+];
 
 export default function SettingsScreen() {
   // 탭 상태
@@ -35,15 +51,31 @@ export default function SettingsScreen() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryIcon, setNewCategoryIcon] = useState('');
 
+  // 소분류 상태
+  const [subCategoriesMap, setSubCategoriesMap] = useState<Map<string, SubCategory[]>>(new Map());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [subCategoryModalVisible, setSubCategoryModalVisible] = useState(false);
+  const [targetCategoryId, setTargetCategoryId] = useState<string>('');
+  const [newSubCategoryName, setNewSubCategoryName] = useState('');
+  const [newSubCategoryIcon, setNewSubCategoryIcon] = useState('');
+
   // 결제수단 상태
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [newPaymentName, setNewPaymentName] = useState('');
   const [newPaymentIcon, setNewPaymentIcon] = useState('');
+  const [newPaymentType, setNewPaymentType] = useState<PaymentMethodType>('credit');
 
   const loadCategories = useCallback(() => {
     const cats = categoryService.getByType(categoryType);
     setCategories(cats);
+
+    // 각 카테고리의 소분류 로드
+    const subMap = new Map<string, SubCategory[]>();
+    cats.forEach((cat) => {
+      subMap.set(cat.id, subCategoryService.getByCategoryId(cat.id));
+    });
+    setSubCategoriesMap(subMap);
   }, [categoryType]);
 
   const loadPaymentMethods = useCallback(() => {
@@ -57,6 +89,19 @@ export default function SettingsScreen() {
       loadPaymentMethods();
     }, [loadCategories, loadPaymentMethods])
   );
+
+  // 카테고리 토글
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   // 카테고리 핸들러
   const handleAddCategory = () => {
@@ -74,7 +119,6 @@ export default function SettingsScreen() {
 
     categoryService.create(input);
 
-    // 즉시 데이터 새로고침
     setNewCategoryName('');
     setNewCategoryIcon('');
     setCategoryModalVisible(false);
@@ -84,15 +128,64 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteCategory = (id: string, name: string) => {
-    Alert.alert('삭제 확인', `"${name}" 카테고리를 삭제하시겠습니까?`, [
+    Alert.alert('삭제 확인', `"${name}" 카테고리와 모든 소분류를 삭제하시겠습니까?`, [
       { text: '취소', style: 'cancel' },
       {
         text: '삭제',
         style: 'destructive',
         onPress: () => {
+          // 소분류도 함께 삭제
+          const subs = subCategoryService.getByCategoryId(id);
+          subs.forEach((sub) => subCategoryService.delete(sub.id));
           categoryService.delete(id);
-          loadCategories(); // 즉시 새로고침
+          loadCategories();
           Alert.alert('완료', `"${name}" 카테고리가 삭제되었습니다`);
+        },
+      },
+    ]);
+  };
+
+  // 소분류 핸들러
+  const handleOpenSubCategoryModal = (categoryId: string) => {
+    setTargetCategoryId(categoryId);
+    setNewSubCategoryName('');
+    setNewSubCategoryIcon('');
+    setSubCategoryModalVisible(true);
+  };
+
+  const handleAddSubCategory = () => {
+    if (!newSubCategoryName.trim()) {
+      Alert.alert('오류', '소분류 이름을 입력해주세요');
+      return;
+    }
+
+    const subName = newSubCategoryName.trim();
+    const input: CreateSubCategoryInput = {
+      categoryId: targetCategoryId,
+      name: subName,
+      icon: newSubCategoryIcon || undefined,
+    };
+
+    subCategoryService.create(input);
+
+    setNewSubCategoryName('');
+    setNewSubCategoryIcon('');
+    setSubCategoryModalVisible(false);
+    loadCategories();
+
+    Alert.alert('완료', `"${subName}" 소분류가 생성되었습니다`);
+  };
+
+  const handleDeleteSubCategory = (id: string, name: string) => {
+    Alert.alert('삭제 확인', `"${name}" 소분류를 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => {
+          subCategoryService.delete(id);
+          loadCategories();
+          Alert.alert('완료', `"${name}" 소분류가 삭제되었습니다`);
         },
       },
     ]);
@@ -109,13 +202,14 @@ export default function SettingsScreen() {
     const input: CreatePaymentMethodInput = {
       name: methodName,
       icon: newPaymentIcon || undefined,
+      type: newPaymentType,
     };
 
     paymentMethodService.create(input);
 
-    // 즉시 데이터 새로고침
     setNewPaymentName('');
     setNewPaymentIcon('');
+    setNewPaymentType('credit');
     setPaymentModalVisible(false);
     loadPaymentMethods();
 
@@ -130,35 +224,29 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: () => {
           paymentMethodService.delete(id);
-          loadPaymentMethods(); // 즉시 새로고침
+          loadPaymentMethods();
           Alert.alert('완료', `"${name}" 결제수단이 삭제되었습니다`);
         },
       },
     ]);
   };
 
-  // 카테고리 렌더링
-  const renderCategory = ({ item }: { item: Category }) => (
-    <View style={styles.listItem}>
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemIcon}>{item.icon || '📁'}</Text>
-        <Text style={styles.itemName}>{item.name}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteCategory(item.id, item.name)}
-      >
-        <Text style={styles.deleteText}>삭제</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const getPaymentTypeLabel = (type?: PaymentMethodType): string => {
+    const found = PAYMENT_TYPE_OPTIONS.find((o) => o.value === type);
+    return found?.label ?? '';
+  };
 
   // 결제수단 렌더링
   const renderPaymentMethod = ({ item }: { item: PaymentMethod }) => (
     <View style={styles.listItem}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemIcon}>{item.icon || '💳'}</Text>
-        <Text style={styles.itemName}>{item.name}</Text>
+        <View>
+          <Text style={styles.itemName}>{item.name}</Text>
+          {item.type && (
+            <Text style={styles.itemType}>{getPaymentTypeLabel(item.type)}</Text>
+          )}
+        </View>
       </View>
       <TouchableOpacity
         style={styles.deleteButton}
@@ -174,6 +262,19 @@ export default function SettingsScreen() {
       <Text style={styles.emptyText}>{type}이(가) 없습니다</Text>
       <Text style={styles.emptySubtext}>+ 버튼을 눌러 추가해보세요</Text>
     </View>
+  );
+
+  // 카테고리 탭 렌더링
+  const renderCategoryItem = ({ item }: { item: Category }) => (
+    <CategoryGroupItem
+      category={item}
+      subCategories={subCategoriesMap.get(item.id) || []}
+      expanded={expandedCategories.has(item.id)}
+      onToggle={() => toggleCategory(item.id)}
+      onDeleteCategory={handleDeleteCategory}
+      onDeleteSubCategory={handleDeleteSubCategory}
+      onAddSubCategory={handleOpenSubCategoryModal}
+    />
   );
 
   return (
@@ -254,7 +355,7 @@ export default function SettingsScreen() {
 
           <FlatList
             data={categories}
-            renderItem={renderCategory}
+            renderItem={renderCategoryItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={() => renderEmpty('카테고리')}
@@ -348,6 +449,63 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* 소분류 추가 모달 */}
+      <Modal
+        visible={subCategoryModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSubCategoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>새 소분류</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="소분류 이름"
+              value={newSubCategoryName}
+              onChangeText={setNewSubCategoryName}
+              placeholderTextColor="#999"
+            />
+
+            <Text style={styles.iconLabel}>아이콘 선택</Text>
+            <View style={styles.iconGrid}>
+              {SUB_CATEGORY_ICONS.map((icon) => (
+                <TouchableOpacity
+                  key={icon}
+                  style={[
+                    styles.iconOption,
+                    newSubCategoryIcon === icon && styles.iconOptionActive,
+                  ]}
+                  onPress={() => setNewSubCategoryIcon(icon)}
+                >
+                  <Text style={styles.iconText}>{icon}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setNewSubCategoryName('');
+                  setNewSubCategoryIcon('');
+                  setSubCategoryModalVisible(false);
+                }}
+              >
+                <Text style={styles.cancelText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleAddSubCategory}
+              >
+                <Text style={styles.confirmText}>추가</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* 결제수단 추가 모달 */}
       <Modal
         visible={paymentModalVisible}
@@ -361,11 +519,34 @@ export default function SettingsScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="결제수단 이름 (예: 신용카드, 현금)"
+              placeholder="결제수단 이름 (예: 신한카드)"
               value={newPaymentName}
               onChangeText={setNewPaymentName}
               placeholderTextColor="#999"
             />
+
+            <Text style={styles.iconLabel}>유형 선택</Text>
+            <View style={styles.optionsContainer}>
+              {PAYMENT_TYPE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.typeOption,
+                    newPaymentType === option.value && styles.typeOptionActive,
+                  ]}
+                  onPress={() => setNewPaymentType(option.value)}
+                >
+                  <Text
+                    style={[
+                      styles.typeOptionText,
+                      newPaymentType === option.value && styles.typeOptionTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Text style={styles.iconLabel}>아이콘 선택</Text>
             <View style={styles.iconGrid}>
@@ -389,6 +570,7 @@ export default function SettingsScreen() {
                 onPress={() => {
                   setNewPaymentName('');
                   setNewPaymentIcon('');
+                  setNewPaymentType('credit');
                   setPaymentModalVisible(false);
                 }}
               >
@@ -489,6 +671,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
+  itemType: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
   deleteButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -578,6 +765,28 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 24,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  typeOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+  },
+  typeOptionActive: {
+    backgroundColor: '#2196F3',
+  },
+  typeOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  typeOptionTextActive: {
+    color: '#FFF',
   },
   modalButtons: {
     flexDirection: 'row',
