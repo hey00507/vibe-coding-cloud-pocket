@@ -2,6 +2,7 @@ import {
   PaymentMethod,
   CreatePaymentMethodInput,
   UpdatePaymentMethodInput,
+  PaymentMethodType,
 } from '../../types';
 
 /**
@@ -28,6 +29,13 @@ export interface IPaymentMethodService {
    * @returns 결제수단 배열
    */
   getAll(): PaymentMethod[];
+
+  /**
+   * 유형별 결제수단 조회
+   * @param type 결제수단 유형
+   * @returns 해당 유형의 결제수단 배열
+   */
+  getByType(type: PaymentMethodType): PaymentMethod[];
 
   /**
    * 결제수단 수정

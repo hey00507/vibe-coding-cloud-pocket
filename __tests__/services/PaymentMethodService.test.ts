@@ -156,6 +156,37 @@ describe('PaymentMethodService', () => {
     });
   });
 
+  describe('getByType', () => {
+    it('should return payment methods by type', () => {
+      service.create({ name: '신한카드', icon: '💳', type: 'credit' });
+      service.create({ name: '현대카드', icon: '💳', type: 'debit' });
+      service.create({ name: '현금', icon: '💵', type: 'cash' });
+      service.create({ name: '삼성카드', icon: '💳', type: 'credit' });
+
+      const result = service.getByType('credit');
+
+      expect(result).toHaveLength(2);
+      expect(result.every((pm) => pm.type === 'credit')).toBe(true);
+    });
+
+    it('should return empty array when no matching type', () => {
+      service.create({ name: '현금', icon: '💵', type: 'cash' });
+
+      const result = service.getByType('account');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('create with type', () => {
+    it('should store payment method type', () => {
+      const pm = service.create({ name: '신한카드', icon: '💳', type: 'credit' });
+
+      expect(pm.type).toBe('credit');
+      expect(service.getById(pm.id)!.type).toBe('credit');
+    });
+  });
+
   describe('clear', () => {
     it('should remove all payment methods', () => {
       service.create({ name: '신용카드' });

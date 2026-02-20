@@ -2,6 +2,7 @@ import {
   PaymentMethod,
   CreatePaymentMethodInput,
   UpdatePaymentMethodInput,
+  PaymentMethodType,
 } from '../types';
 import { IPaymentMethodService } from './interfaces/IPaymentMethodService';
 
@@ -23,6 +24,7 @@ export class PaymentMethodService implements IPaymentMethodService {
       id: this.generateId(),
       name: input.name,
       icon: input.icon,
+      type: input.type,
     };
 
     this.paymentMethods.set(paymentMethod.id, paymentMethod);
@@ -35,6 +37,10 @@ export class PaymentMethodService implements IPaymentMethodService {
 
   getAll(): PaymentMethod[] {
     return Array.from(this.paymentMethods.values());
+  }
+
+  getByType(type: PaymentMethodType): PaymentMethod[] {
+    return this.getAll().filter((pm) => pm.type === type);
   }
 
   update(id: string, input: UpdatePaymentMethodInput): PaymentMethod | undefined {
