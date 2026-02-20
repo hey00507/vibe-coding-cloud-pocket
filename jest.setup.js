@@ -6,6 +6,33 @@
 //   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 // );
 
+// Mock react-native-svg
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const createMockComponent = (name) => {
+    const Component = ({ children, ...props }) =>
+      React.createElement(name, props, children);
+    Component.displayName = name;
+    return Component;
+  };
+  const Svg = createMockComponent('Svg');
+  return {
+    __esModule: true,
+    default: Svg,
+    Svg,
+    Circle: createMockComponent('Circle'),
+    Rect: createMockComponent('Rect'),
+    Path: createMockComponent('Path'),
+    Text: createMockComponent('Text'),
+    G: createMockComponent('G'),
+    Line: createMockComponent('Line'),
+    Defs: createMockComponent('Defs'),
+    LinearGradient: createMockComponent('LinearGradient'),
+    Stop: createMockComponent('Stop'),
+    ClipPath: createMockComponent('ClipPath'),
+  };
+});
+
 // Global test timeout
 jest.setTimeout(10000);
 
