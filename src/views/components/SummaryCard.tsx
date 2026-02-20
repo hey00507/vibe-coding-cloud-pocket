@@ -5,6 +5,9 @@ interface SummaryCardProps {
   balance: number;
   totalIncome: number;
   totalExpense: number;
+  totalSavings?: number;
+  savingsRate?: number;
+  remainingCash?: number;
 }
 
 const formatCurrency = (amount: number): string => {
@@ -15,7 +18,12 @@ export default function SummaryCard({
   balance,
   totalIncome,
   totalExpense,
+  totalSavings,
+  savingsRate,
+  remainingCash,
 }: SummaryCardProps) {
+  const showExtended = totalSavings !== undefined && totalSavings > 0;
+
   return (
     <View style={styles.container}>
       <View style={styles.balanceSection}>
@@ -41,6 +49,40 @@ export default function SummaryCard({
           </Text>
         </View>
       </View>
+      {showExtended && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.detailsSection}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>저축</Text>
+              <Text style={[styles.detailAmount, styles.savingsAmount]}>
+                {formatCurrency(totalSavings!)}
+              </Text>
+            </View>
+            {savingsRate !== undefined && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>저축률</Text>
+                <Text style={[styles.detailAmount, styles.savingsAmount]}>
+                  {savingsRate}%
+                </Text>
+              </View>
+            )}
+            {remainingCash !== undefined && (
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>잔여현금</Text>
+                <Text
+                  style={[
+                    styles.detailAmount,
+                    remainingCash >= 0 ? styles.incomeAmount : styles.expenseAmount,
+                  ]}
+                >
+                  {formatCurrency(remainingCash)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -95,5 +137,8 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     color: '#FFCDD2',
+  },
+  savingsAmount: {
+    color: '#90CAF9',
   },
 });
