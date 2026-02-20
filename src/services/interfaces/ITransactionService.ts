@@ -7,6 +7,8 @@ import {
   PeriodSummary,
   CategoryBreakdown,
   PaymentMethodBreakdown,
+  MonthlyCategoryMatrix,
+  EnhancedMonthlySummary,
 } from '../../types';
 
 /**
@@ -156,4 +158,28 @@ export interface ITransactionService {
     endDate: Date,
     type?: TransactionType
   ): PaymentMethodBreakdown[];
+
+  /**
+   * 연간 카테고리별 매트릭스 조회
+   * @param year 연도
+   * @param categoryMap 카테고리 ID → 이름 매핑
+   * @returns 카테고리별 12개월 지출 매트릭스
+   */
+  getAnnualCategoryMatrix(
+    year: number,
+    categoryMap: Map<string, string>
+  ): MonthlyCategoryMatrix[];
+
+  /**
+   * 월간 상세 요약 조회
+   * @param year 연도
+   * @param month 월 (1-12)
+   * @param totalSavings 해당 월 총 저축액
+   * @returns 확장된 월간 요약
+   */
+  getEnhancedMonthlySummary(
+    year: number,
+    month: number,
+    totalSavings: number
+  ): EnhancedMonthlySummary;
 }

@@ -7,6 +7,8 @@ import {
   PeriodSummary,
   CategoryBreakdown,
   PaymentMethodBreakdown,
+  MonthlyCategoryMatrix,
+  EnhancedMonthlySummary,
 } from '../types';
 import { ITransactionService } from './interfaces/ITransactionService';
 
@@ -30,6 +32,7 @@ export class TransactionService implements ITransactionService {
       amount: input.amount,
       date: input.date,
       categoryId: input.categoryId,
+      subCategoryId: input.subCategoryId,
       paymentMethodId: input.paymentMethodId,
       memo: input.memo,
     };
@@ -272,6 +275,64 @@ export class TransactionService implements ITransactionService {
       totalExpense,
       balance: totalIncome - totalExpense,
       transactionCount: transactions.length,
+    };
+  }
+
+  getAnnualCategoryMatrix(
+    year: number,
+    categoryMap: Map<string, string>
+  ): MonthlyCategoryMatrix[] {
+    // 연도 내 지출 거래만 필터링
+    const yearExpenses = this.getAll().filter(
+      (t) => t.date.getFullYear() === year && t.type === 'expense'
+    );
+
+    // 카테고리별 월별 금액 집계
+    const matrixMap = new Map<string, number[]>();
+
+    yearExpenses.forEach((t) => {
+      const monthIndex = t.date.getMonth(); // 0-11
+      if (!matrixMap.has(t.categoryId)) {
+        matrixMap.set(t.categoryId, new Array(12).fill(0));
+      }
+      const amounts = matrixMap.get(t.categoryId)!;
+      amounts[monthIndex] += t.amount;
+    });
+
+    const result: MonthlyCategoryMatrix[] = [];
+    matrixMap.forEach((monthlyAmounts, categoryId) => {
+      const total = monthlyAmounts.reduce((sum, a) => sum + a, 0);
+      result.push({
+        categoryId,
+        categoryName: categoryMap.get(categoryId) ?? '미분류',
+        monthlyAmounts,
+        total,
+      });
+    });
+
+    // 총 금액 내림차순 정렬
+    return result.sort((a, b) => b.total - a.total);
+  }
+
+  getEnhancedMonthlySummary(
+    year: number,
+    month: number,
+    totalSavings: number
+  ): EnhancedMonthlySummary {
+    const base = this.getMonthlySummary(year, month);
+    const remainingCash = base.totalIncome - base.totalExpense - totalSavings;
+    const savingsRate = base.totalIncome > 0
+      ? Math.round((totalSavings / base.totalIncome) * 100)
+      : 0;
+    // 급여 대비 저축률 = 저축액 / 수입 (동일 기준, 수입을 급여로 간주)
+    const salarySavingsRate = savingsRate;
+
+    return {
+      ...base,
+      totalSavings,
+      savingsRate,
+      remainingCash,
+      salarySavingsRate,
     };
   }
 
