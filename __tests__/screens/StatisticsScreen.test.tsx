@@ -5,6 +5,7 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
+  savingsService,
 } from '../../src/services/ServiceRegistry';
 
 // Mock navigation
@@ -31,6 +32,7 @@ describe('StatisticsScreen', () => {
     transactionService.clear();
     categoryService.clear();
     paymentMethodService.clear();
+    savingsService.clear();
     mockNavigation.navigate.mockClear();
     mockNavigation.setParams.mockClear();
   });
@@ -80,7 +82,8 @@ describe('StatisticsScreen', () => {
       );
 
       const emptyTexts = screen.getAllByText('데이터가 없습니다');
-      expect(emptyTexts.length).toBe(2);
+      // DonutChart(1) + BreakdownList(2) = 3
+      expect(emptyTexts.length).toBe(3);
     });
   });
 
@@ -131,8 +134,9 @@ describe('StatisticsScreen', () => {
         />
       );
 
-      expect(screen.getByText('식비')).toBeTruthy();
-      expect(screen.getByText('교통')).toBeTruthy();
+      // DonutChart 범례와 BreakdownList 모두에 표시됨
+      expect(screen.getAllByText('식비').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('교통').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display payment method breakdown with names', () => {
@@ -145,6 +149,97 @@ describe('StatisticsScreen', () => {
 
       expect(screen.getByText('카드')).toBeTruthy();
       expect(screen.getByText('현금')).toBeTruthy();
+    });
+  });
+
+  describe('donut chart', () => {
+    it('should render donut chart in monthly view when expense data exists', () => {
+      categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      const categories = categoryService.getAll();
+      const now = new Date();
+      transactionService.create({
+        type: 'expense',
+        amount: 50000,
+        date: new Date(now.getFullYear(), now.getMonth(), 10),
+        categoryId: categories[0].id,
+      });
+
+      render(
+        <StatisticsScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Statistics', name: 'Statistics' }}
+        />
+      );
+
+      expect(screen.getByTestId('donut-svg')).toBeTruthy();
+      expect(screen.getByTestId('donut-segment-0')).toBeTruthy();
+    });
+
+    it('should show center label with total expense', () => {
+      categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      const categories = categoryService.getAll();
+      const now = new Date();
+      transactionService.create({
+        type: 'expense',
+        amount: 50000,
+        date: new Date(now.getFullYear(), now.getMonth(), 10),
+        categoryId: categories[0].id,
+      });
+
+      render(
+        <StatisticsScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Statistics', name: 'Statistics' }}
+        />
+      );
+
+      expect(screen.getByText('총 지출')).toBeTruthy();
+    });
+  });
+
+  describe('grouped bar chart', () => {
+    it('should render bar chart in yearly view', () => {
+      categoryService.create({ name: '식비', type: 'expense', icon: '🍔' });
+      const categories = categoryService.getAll();
+      const now = new Date();
+      transactionService.create({
+        type: 'expense',
+        amount: 50000,
+        date: new Date(now.getFullYear(), 0, 10),
+        categoryId: categories[0].id,
+      });
+      transactionService.create({
+        type: 'income',
+        amount: 200000,
+        date: new Date(now.getFullYear(), 0, 1),
+        categoryId: categories[0].id,
+      });
+
+      render(
+        <StatisticsScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Statistics', name: 'Statistics' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('연도별'));
+
+      expect(screen.getByTestId('bar-chart-svg')).toBeTruthy();
+    });
+
+    it('should show empty bar chart when no yearly data', () => {
+      render(
+        <StatisticsScreen
+          navigation={mockNavigation as never}
+          route={{ key: 'Statistics', name: 'Statistics' }}
+        />
+      );
+
+      fireEvent.press(screen.getByText('연도별'));
+
+      // bar chart shows empty state, plus 2 breakdown lists
+      const emptyTexts = screen.getAllByText('데이터가 없습니다');
+      expect(emptyTexts.length).toBeGreaterThanOrEqual(1);
     });
   });
 

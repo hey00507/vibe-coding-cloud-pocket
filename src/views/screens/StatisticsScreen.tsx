@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatisticsScreenProps } from '../../types/navigation';
@@ -12,10 +12,30 @@ import {
   transactionService,
   categoryService,
   paymentMethodService,
+  savingsService,
 } from '../../services/ServiceRegistry';
 import PeriodSelector from '../components/PeriodSelector';
 import SummaryCard from '../components/SummaryCard';
 import BreakdownList, { BreakdownItem } from '../components/BreakdownList';
+import DonutChart, { DonutChartSegment } from '../components/DonutChart';
+import GroupedBarChart, { MonthlyBarData } from '../components/GroupedBarChart';
+
+const CHART_COLORS = [
+  '#FF6384',
+  '#36A2EB',
+  '#FFCE56',
+  '#4BC0C0',
+  '#9966FF',
+  '#FF9F40',
+  '#E7E9ED',
+  '#7BC8A4',
+  '#FF8A80',
+  '#B39DDB',
+];
+
+const formatCurrency = (amount: number): string => {
+  return amount.toLocaleString('ko-KR') + '원';
+};
 
 export default function StatisticsScreen({}: StatisticsScreenProps) {
   const now = new Date();
@@ -30,6 +50,8 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
   });
   const [categoryItems, setCategoryItems] = useState<BreakdownItem[]>([]);
   const [paymentItems, setPaymentItems] = useState<BreakdownItem[]>([]);
+  const [donutSegments, setDonutSegments] = useState<DonutChartSegment[]>([]);
+  const [monthlyBarData, setMonthlyBarData] = useState<MonthlyBarData[]>([]);
 
   const loadData = useCallback(() => {
     // 기간별 요약
@@ -58,6 +80,9 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
     );
     setCategoryItems(mapCategoryBreakdown(categoryBreakdown));
 
+    // 도넛 차트 데이터 구성
+    setDonutSegments(mapDonutSegments(categoryBreakdown));
+
     // 결제수단별 지출 집계
     const paymentBreakdown = transactionService.getPaymentMethodBreakdown(
       startDate,
@@ -65,6 +90,23 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
       'expense'
     );
     setPaymentItems(mapPaymentBreakdown(paymentBreakdown));
+
+    // 연도별 모드: 월별 막대 차트 데이터 구성
+    if (periodType === 'yearly') {
+      const monthlySavings = savingsService.getMonthlySavingsTotal();
+      const barData: MonthlyBarData[] = [];
+      for (let m = 1; m <= 12; m++) {
+        const ms = transactionService.getMonthlySummary(currentYear, m);
+        barData.push({
+          month: m,
+          label: `${m}월`,
+          income: ms.totalIncome,
+          savings: monthlySavings,
+          expense: ms.totalExpense,
+        });
+      }
+      setMonthlyBarData(barData);
+    }
   }, [periodType, currentYear, currentMonth]);
 
   useFocusEffect(
@@ -72,6 +114,11 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
       loadData();
     }, [loadData])
   );
+
+  // 기간 변경 시 데이터 재로드
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const mapCategoryBreakdown = (
     data: CategoryBreakdown[]
@@ -85,6 +132,21 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
         amount: item.amount,
         percentage: item.percentage,
         transactionCount: item.transactionCount,
+      };
+    });
+  };
+
+  const mapDonutSegments = (
+    data: CategoryBreakdown[]
+  ): DonutChartSegment[] => {
+    return data.map((item, index) => {
+      const category = categoryService.getById(item.categoryId);
+      return {
+        id: item.categoryId,
+        label: category?.name ?? '미분류',
+        value: item.amount,
+        percentage: item.percentage,
+        color: CHART_COLORS[index % CHART_COLORS.length],
       };
     });
   };
@@ -146,6 +208,15 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
         totalIncome={summary.totalIncome}
         totalExpense={summary.totalExpense}
       />
+      {periodType === 'monthly' ? (
+        <DonutChart
+          segments={donutSegments}
+          centerLabel="총 지출"
+          centerValue={formatCurrency(summary.totalExpense)}
+        />
+      ) : (
+        <GroupedBarChart data={monthlyBarData} />
+      )}
       <BreakdownList title="카테고리별 지출" items={categoryItems} />
       <BreakdownList title="결제수단별 지출" items={paymentItems} />
     </ScrollView>
