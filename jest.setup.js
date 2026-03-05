@@ -1,10 +1,10 @@
 // @testing-library/react-native v12.4+ has built-in matchers
 // No need to import extend-expect separately
 
-// Mock AsyncStorage (will be activated when package is installed)
-// jest.mock('@react-native-async-storage/async-storage', () =>
-//   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
-// );
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
 
 // Mock react-native-svg
 jest.mock('react-native-svg', () => {
