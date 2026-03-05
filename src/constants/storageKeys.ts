@@ -1,0 +1,17 @@
+export const STORAGE_KEYS = {
+  CATEGORIES: '@cloudpocket/categories',
+  CATEGORIES_ID_COUNTER: '@cloudpocket/categories/idCounter',
+  SUB_CATEGORIES: '@cloudpocket/subCategories',
+  SUB_CATEGORIES_ID_COUNTER: '@cloudpocket/subCategories/idCounter',
+  PAYMENT_METHODS: '@cloudpocket/paymentMethods',
+  PAYMENT_METHODS_ID_COUNTER: '@cloudpocket/paymentMethods/idCounter',
+  TRANSACTIONS: '@cloudpocket/transactions',
+  TRANSACTIONS_ID_COUNTER: '@cloudpocket/transactions/idCounter',
+  INCOME_TARGETS: '@cloudpocket/incomeTargets',
+  INCOME_TARGETS_ID_COUNTER: '@cloudpocket/incomeTargets/idCounter',
+  SAVINGS: '@cloudpocket/savings',
+  SAVINGS_ID_COUNTER: '@cloudpocket/savings/idCounter',
+  BANK_ACCOUNTS: '@cloudpocket/bankAccounts',
+  BANK_ACCOUNTS_ID_COUNTER: '@cloudpocket/bankAccounts/idCounter',
+  SEEDED: '@cloudpocket/seeded',
+} as const;
