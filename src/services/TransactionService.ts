@@ -11,6 +11,7 @@ import {
   EnhancedMonthlySummary,
 } from '../types';
 import { ITransactionService } from './interfaces/ITransactionService';
+import { IStorageService } from './interfaces/IStorageService';
 
 /**
  * 거래 서비스 구현체
@@ -19,6 +20,36 @@ import { ITransactionService } from './interfaces/ITransactionService';
 export class TransactionService implements ITransactionService {
   private transactions: Map<string, Transaction> = new Map();
   private idCounter: number = 0;
+  private storageService: IStorageService | null = null;
+  private storageKey: string = '';
+  private idCounterKey: string = '';
+
+  async hydrate(
+    storageService: IStorageService,
+    storageKey: string,
+    idCounterKey: string
+  ): Promise<void> {
+    this.storageService = storageService;
+    this.storageKey = storageKey;
+    this.idCounterKey = idCounterKey;
+
+    const items = await storageService.load<Transaction>(storageKey, ['date']);
+    for (const item of items) {
+      this.transactions.set(item.id, item);
+    }
+
+    const counter = await storageService.loadValue<number>(idCounterKey);
+    if (counter !== null) {
+      this.idCounter = counter;
+    }
+  }
+
+  private persist(): void {
+    if (!this.storageService) return;
+    const items = Array.from(this.transactions.values());
+    this.storageService.save(this.storageKey, items);
+    this.storageService.saveValue(this.idCounterKey, this.idCounter);
+  }
 
   private generateId(): string {
     this.idCounter += 1;
@@ -38,6 +69,7 @@ export class TransactionService implements ITransactionService {
     };
 
     this.transactions.set(transaction.id, transaction);
+    this.persist();
     return transaction;
   }
 
@@ -85,16 +117,20 @@ export class TransactionService implements ITransactionService {
     };
 
     this.transactions.set(id, updated);
+    this.persist();
     return updated;
   }
 
   delete(id: string): boolean {
-    return this.transactions.delete(id);
+    const result = this.transactions.delete(id);
+    if (result) this.persist();
+    return result;
   }
 
   clear(): void {
     this.transactions.clear();
     this.idCounter = 0;
+    this.persist();
   }
 
   getTotalIncome(): number {
