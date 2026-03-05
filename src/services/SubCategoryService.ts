@@ -4,6 +4,7 @@ import {
   UpdateSubCategoryInput,
 } from '../types';
 import { ISubCategoryService } from './interfaces/ISubCategoryService';
+import { IStorageService } from './interfaces/IStorageService';
 
 /**
  * 소분류 카테고리 서비스 구현체
@@ -12,6 +13,36 @@ import { ISubCategoryService } from './interfaces/ISubCategoryService';
 export class SubCategoryService implements ISubCategoryService {
   private subCategories: Map<string, SubCategory> = new Map();
   private idCounter: number = 0;
+  private storageService: IStorageService | null = null;
+  private storageKey: string = '';
+  private idCounterKey: string = '';
+
+  async hydrate(
+    storageService: IStorageService,
+    storageKey: string,
+    idCounterKey: string
+  ): Promise<void> {
+    this.storageService = storageService;
+    this.storageKey = storageKey;
+    this.idCounterKey = idCounterKey;
+
+    const items = await storageService.load<SubCategory>(storageKey);
+    for (const item of items) {
+      this.subCategories.set(item.id, item);
+    }
+
+    const counter = await storageService.loadValue<number>(idCounterKey);
+    if (counter !== null) {
+      this.idCounter = counter;
+    }
+  }
+
+  private persist(): void {
+    if (!this.storageService) return;
+    const items = Array.from(this.subCategories.values());
+    this.storageService.save(this.storageKey, items);
+    this.storageService.saveValue(this.idCounterKey, this.idCounter);
+  }
 
   private generateId(): string {
     this.idCounter += 1;
@@ -27,6 +58,7 @@ export class SubCategoryService implements ISubCategoryService {
     };
 
     this.subCategories.set(subCategory.id, subCategory);
+    this.persist();
     return subCategory;
   }
 
@@ -55,15 +87,19 @@ export class SubCategoryService implements ISubCategoryService {
     };
 
     this.subCategories.set(id, updated);
+    this.persist();
     return updated;
   }
 
   delete(id: string): boolean {
-    return this.subCategories.delete(id);
+    const result = this.subCategories.delete(id);
+    if (result) this.persist();
+    return result;
   }
 
   clear(): void {
     this.subCategories.clear();
     this.idCounter = 0;
+    this.persist();
   }
 }
