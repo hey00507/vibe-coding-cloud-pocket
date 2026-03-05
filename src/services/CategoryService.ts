@@ -5,6 +5,7 @@ import {
   TransactionType,
 } from '../types';
 import { ICategoryService } from './interfaces/ICategoryService';
+import { IStorageService } from './interfaces/IStorageService';
 
 /**
  * 카테고리 서비스 구현체
@@ -13,6 +14,36 @@ import { ICategoryService } from './interfaces/ICategoryService';
 export class CategoryService implements ICategoryService {
   private categories: Map<string, Category> = new Map();
   private idCounter: number = 0;
+  private storageService: IStorageService | null = null;
+  private storageKey: string = '';
+  private idCounterKey: string = '';
+
+  async hydrate(
+    storageService: IStorageService,
+    storageKey: string,
+    idCounterKey: string
+  ): Promise<void> {
+    this.storageService = storageService;
+    this.storageKey = storageKey;
+    this.idCounterKey = idCounterKey;
+
+    const items = await storageService.load<Category>(storageKey);
+    for (const item of items) {
+      this.categories.set(item.id, item);
+    }
+
+    const counter = await storageService.loadValue<number>(idCounterKey);
+    if (counter !== null) {
+      this.idCounter = counter;
+    }
+  }
+
+  private persist(): void {
+    if (!this.storageService) return;
+    const items = Array.from(this.categories.values());
+    this.storageService.save(this.storageKey, items);
+    this.storageService.saveValue(this.idCounterKey, this.idCounter);
+  }
 
   private generateId(): string {
     this.idCounter += 1;
@@ -29,6 +60,7 @@ export class CategoryService implements ICategoryService {
     };
 
     this.categories.set(category.id, category);
+    this.persist();
     return category;
   }
 
@@ -57,15 +89,19 @@ export class CategoryService implements ICategoryService {
     };
 
     this.categories.set(id, updated);
+    this.persist();
     return updated;
   }
 
   delete(id: string): boolean {
-    return this.categories.delete(id);
+    const result = this.categories.delete(id);
+    if (result) this.persist();
+    return result;
   }
 
   clear(): void {
     this.categories.clear();
     this.idCounter = 0;
+    this.persist();
   }
 }
