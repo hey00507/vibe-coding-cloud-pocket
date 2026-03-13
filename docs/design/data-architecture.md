@@ -133,16 +133,16 @@ Service → AsyncStorage → 메모리 캐시 (성능 최적화)
 
 ## 6. TODO
 
-### Phase 2: AsyncStorage 연동
-- [ ] @react-native-async-storage/async-storage 설치
-- [ ] StorageService 추상화 레이어 구현
-- [ ] CategoryService AsyncStorage 연동
-- [ ] PaymentMethodService AsyncStorage 연동
-- [ ] TransactionService AsyncStorage 연동
-- [ ] 앱 시작 시 데이터 로드
-- [ ] 테스트 코드 업데이트
+### Phase 2: AsyncStorage 연동 (완료)
+- [x] @react-native-async-storage/async-storage 설치
+- [x] StorageService 추상화 레이어 구현
+- [x] 7개 도메인 서비스 AsyncStorage 연동
+- [x] AppInitializer + SeedService
+- [x] 앱 시작 시 데이터 로드
+- [x] 테스트 코드 업데이트 (612개 테스트, 95.11%)
 
 ### Phase 3: Google Sheets 동기화
+> 상세: [prd-phase3-google-sheets.md](prd-phase3-google-sheets.md)
 - [ ] Google OAuth 인증 구현
 - [ ] Google Sheets API 연동
 - [ ] 내보내기 기능
