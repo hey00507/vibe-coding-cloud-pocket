@@ -6,6 +6,8 @@ import { SeedService } from './SeedService';
 import { IncomeTargetService } from './IncomeTargetService';
 import { SavingsService } from './SavingsService';
 import { BankAccountService } from './BankAccountService';
+import { GoogleAuthService } from './GoogleAuthService';
+import { GoogleSheetsService } from './GoogleSheetsService';
 
 // 전역 서비스 싱글톤 인스턴스
 export const transactionService = new TransactionService();
@@ -16,3 +18,11 @@ export const seedService = new SeedService();
 export const incomeTargetService = new IncomeTargetService();
 export const savingsService = new SavingsService();
 export const bankAccountService = new BankAccountService();
+export const googleAuthService = new GoogleAuthService();
+export const googleSheetsService = new GoogleSheetsService({
+  getAccessToken: () => googleAuthService.getAccessToken(),
+  transactionService,
+  categoryService,
+  paymentMethodService,
+  subCategoryService,
+});
