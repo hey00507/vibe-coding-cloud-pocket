@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../controllers/useTheme';
 
 interface DayCellProps {
   day: number | null;
@@ -20,6 +21,8 @@ const DayCell: React.FC<DayCellProps> = ({
   isSelected = false,
   onPress,
 }) => {
+  const { theme } = useTheme();
+
   if (day === null) {
     return <View style={styles.emptyCell} />;
   }
@@ -39,16 +42,22 @@ const DayCell: React.FC<DayCellProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.cell, isToday && styles.todayCell, isSelected && styles.selectedCell]}
+      style={[
+        styles.cell,
+        isToday && { backgroundColor: theme.colors.primaryLight },
+        isSelected && { backgroundColor: theme.colors.selectedDayBackground, borderRadius: 20 },
+      ]}
       onPress={onPress}
       disabled={!selectable && !hasTransactions}
     >
-      <Text style={[styles.dayText, isToday && styles.todayText]}>{day}</Text>
+      <Text style={[styles.dayText, { color: theme.colors.text }, isToday && { fontWeight: '700', color: theme.colors.primary }]}>
+        {day}
+      </Text>
       {hasTransactions && balance !== undefined && (
         <Text
           style={[
             styles.balanceText,
-            balance >= 0 ? styles.incomeText : styles.expenseText,
+            { color: balance >= 0 ? theme.colors.income : theme.colors.expense },
           ]}
         >
           {formatBalance(balance)}
@@ -73,30 +82,12 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     margin: 1,
   },
-  todayCell: {
-    backgroundColor: '#E3F2FD',
-  },
-  selectedCell: {
-    backgroundColor: '#BBDEFB',
-    borderRadius: 20,
-  },
   dayText: {
     fontSize: 14,
-    color: '#333',
-  },
-  todayText: {
-    fontWeight: '700',
-    color: '#2196F3',
   },
   balanceText: {
     fontSize: 10,
     marginTop: 2,
-  },
-  incomeText: {
-    color: '#4CAF50',
-  },
-  expenseText: {
-    color: '#F44336',
   },
 });
 

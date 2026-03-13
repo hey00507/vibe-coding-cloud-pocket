@@ -23,6 +23,7 @@ import ViewToggle, { ViewMode } from '../components/ViewToggle';
 import CalendarHeader from '../components/CalendarHeader';
 import CalendarGrid from '../components/CalendarGrid';
 import DayDetailModal from '../components/DayDetailModal';
+import { useTheme } from '../../controllers/useTheme';
 
 // 하위 호환: 기존 HomeScreen에서 서비스를 import하는 코드를 위해 re-export
 export { transactionService, categoryService, paymentMethodService, subCategoryService };
@@ -30,6 +31,7 @@ export { transactionService, categoryService, paymentMethodService, subCategoryS
 type FilterType = 'all' | TransactionType;
 
 export default function HomeScreen({ navigation, route }: HomeScreenProps) {
+  const { theme } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -170,8 +172,8 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
-      <Text style={styles.emptySubtext}>
+      <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>거래 내역이 없습니다</Text>
+      <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>
         아래 + 버튼을 눌러 거래를 추가해보세요
       </Text>
     </View>
@@ -183,7 +185,7 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const monthlyBalance = monthlyIncome - monthlyExpense;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       <ViewToggle view={viewMode} onViewChange={setViewMode} />
 
       {viewMode === 'list' ? (
@@ -201,13 +203,15 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
                 key={type}
                 style={[
                   styles.filterButton,
-                  filter === type && styles.filterButtonActive,
+                  { backgroundColor: theme.colors.border },
+                  filter === type && { backgroundColor: theme.colors.primary },
                 ]}
                 onPress={() => setFilter(type)}
               >
                 <Text
                   style={[
                     styles.filterText,
+                    { color: theme.colors.textSecondary },
                     filter === type && styles.filterTextActive,
                   ]}
                 >
@@ -243,20 +247,20 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
           />
 
           {/* 월별 요약 */}
-          <View style={styles.monthlySummary}>
+          <View style={[styles.monthlySummary, { backgroundColor: theme.colors.cardBackground }]}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>수입</Text>
-              <Text style={styles.incomeText}>+{monthlyIncome.toLocaleString()}원</Text>
+              <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>수입</Text>
+              <Text style={[styles.incomeText, { color: theme.colors.income }]}>+{monthlyIncome.toLocaleString()}원</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>지출</Text>
-              <Text style={styles.expenseText}>-{monthlyExpense.toLocaleString()}원</Text>
+              <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>지출</Text>
+              <Text style={[styles.expenseText, { color: theme.colors.expense }]}>-{monthlyExpense.toLocaleString()}원</Text>
             </View>
-            <View style={[styles.summaryRow, styles.balanceRow]}>
-              <Text style={styles.summaryLabel}>잔액</Text>
+            <View style={[styles.summaryRow, styles.balanceRow, { borderTopColor: theme.colors.borderLight }]}>
+              <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>잔액</Text>
               <Text style={[
                 styles.balanceText,
-                monthlyBalance >= 0 ? styles.incomeText : styles.expenseText
+                { color: monthlyBalance >= 0 ? theme.colors.income : theme.colors.expense },
               ]}>
                 {monthlyBalance >= 0 ? '+' : ''}{monthlyBalance.toLocaleString()}원
               </Text>
@@ -288,7 +292,6 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   filterContainer: {
     flexDirection: 'row',
@@ -300,14 +303,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#E0E0E0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#2196F3',
   },
   filterText: {
     fontSize: 14,
-    color: '#666',
   },
   filterTextActive: {
     color: '#FFF',
@@ -326,16 +324,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#999',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#BBB',
   },
-  // 캘린더 스타일
   monthlySummary: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -349,23 +343,19 @@ const styles = StyleSheet.create({
   },
   balanceRow: {
     borderTopWidth: 1,
-    borderTopColor: '#eee',
     marginTop: 8,
     paddingTop: 8,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
   },
   incomeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4CAF50',
   },
   expenseText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F44336',
   },
   balanceText: {
     fontSize: 18,

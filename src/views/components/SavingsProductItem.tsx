@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SavingsProduct } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface SavingsProductItemProps {
   product: SavingsProduct;
@@ -15,53 +16,55 @@ export default function SavingsProductItem({
   product,
   onDelete,
 }: SavingsProductItemProps) {
+  const { theme } = useTheme();
+
   const statusLabel = product.status === 'active' ? '운용중' : '대기';
-  const statusColor = product.status === 'active' ? '#4CAF50' : '#FF9800';
+  const statusColor = product.status === 'active' ? theme.colors.income : theme.colors.warning;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
       <View style={styles.header}>
         <View style={styles.nameRow}>
-          <Text style={styles.name}>{product.name}</Text>
+          <Text style={[styles.name, { color: theme.colors.text }]}>{product.name}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>{statusLabel}</Text>
+            <Text style={[styles.statusText, { color: theme.colors.cardBackground }]}>{statusLabel}</Text>
           </View>
         </View>
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
           onPress={() => onDelete(product.id, product.name)}
         >
-          <Text style={styles.deleteText}>삭제</Text>
+          <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.details}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>은행</Text>
-          <Text style={styles.detailValue}>{product.bank}</Text>
+          <Text style={[styles.detailLabel, { color: theme.colors.textTertiary }]}>은행</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{product.bank}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>금리</Text>
-          <Text style={styles.detailValue}>{product.interestRate}%</Text>
+          <Text style={[styles.detailLabel, { color: theme.colors.textTertiary }]}>금리</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{product.interestRate}%</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>월 납입액</Text>
-          <Text style={styles.detailValue}>{formatCurrency(product.monthlyAmount)}</Text>
+          <Text style={[styles.detailLabel, { color: theme.colors.textTertiary }]}>월 납입액</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{formatCurrency(product.monthlyAmount)}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>납입 개월</Text>
-          <Text style={styles.detailValue}>{product.paidMonths}개월</Text>
+          <Text style={[styles.detailLabel, { color: theme.colors.textTertiary }]}>납입 개월</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{product.paidMonths}개월</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>현재 잔액</Text>
-          <Text style={[styles.detailValue, styles.amountText]}>
+          <Text style={[styles.detailLabel, { color: theme.colors.textTertiary }]}>현재 잔액</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.primary, fontWeight: '700' }]}>
             {formatCurrency(product.currentAmount)}
           </Text>
         </View>
       </View>
 
       {product.memo && (
-        <Text style={styles.memo}>{product.memo}</Text>
+        <Text style={[styles.memo, { color: theme.colors.textTertiary }]}>{product.memo}</Text>
       )}
     </View>
   );
@@ -69,7 +72,6 @@ export default function SavingsProductItem({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -88,7 +90,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -97,18 +98,15 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#FFF',
     fontWeight: '500',
   },
   deleteButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#FFEBEE',
   },
   deleteText: {
     fontSize: 14,
-    color: '#F44336',
   },
   details: {
     gap: 6,
@@ -119,20 +117,13 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 13,
-    color: '#999',
   },
   detailValue: {
     fontSize: 13,
-    color: '#333',
     fontWeight: '500',
-  },
-  amountText: {
-    color: '#2196F3',
-    fontWeight: '700',
   },
   memo: {
     fontSize: 12,
-    color: '#999',
     marginTop: 8,
     fontStyle: 'italic',
   },

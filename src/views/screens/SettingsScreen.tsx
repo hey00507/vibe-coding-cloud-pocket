@@ -26,6 +26,10 @@ import {
   subCategoryService,
 } from '../../services/ServiceRegistry';
 import CategoryGroupItem from '../components/CategoryGroupItem';
+import BackupRestoreSection from '../components/BackupRestoreSection';
+import { useTheme } from '../../controllers/useTheme';
+import { ThemeMode } from '../../types/theme';
+import { SyncResult } from '../../types/googleSheets';
 
 type TabType = 'category' | 'paymentMethod';
 
@@ -40,7 +44,45 @@ const PAYMENT_TYPE_OPTIONS: { label: string; value: PaymentMethodType }[] = [
   { label: '계좌이체', value: 'account' },
 ];
 
+const THEME_OPTIONS: { label: string; value: ThemeMode; icon: string }[] = [
+  { label: '라이트', value: 'light', icon: '☀️' },
+  { label: '다크', value: 'dark', icon: '🌙' },
+  { label: '시스템', value: 'system', icon: '📱' },
+];
+
 export default function SettingsScreen() {
+  const { theme, themeMode, setThemeMode } = useTheme();
+
+  // Google Sheets 백업 상태 (추후 GoogleAuthService/GoogleSheetsService 연결)
+  const [gsIsSignedIn, setGsIsSignedIn] = useState(false);
+  const [gsLastSync, setGsLastSync] = useState<Date | null>(null);
+  const [gsSpreadsheetId, setGsSpreadsheetId] = useState('');
+
+  const handleGsSignIn = useCallback(async () => {
+    // TODO: GoogleAuthService.signIn() 연결
+    Alert.alert('알림', 'Google 로그인은 아직 구현 중입니다');
+  }, []);
+
+  const handleGsSignOut = useCallback(async () => {
+    setGsIsSignedIn(false);
+    setGsLastSync(null);
+    setGsSpreadsheetId('');
+  }, []);
+
+  const handleGsExport = useCallback(async (): Promise<SyncResult> => {
+    // TODO: GoogleSheetsService.exportAll() 연결
+    return { status: 'error', message: '아직 구현 중입니다', timestamp: new Date() };
+  }, []);
+
+  const handleGsImport = useCallback(async (): Promise<SyncResult> => {
+    // TODO: GoogleSheetsService.importAll() 연결
+    return { status: 'error', message: '아직 구현 중입니다', timestamp: new Date() };
+  }, []);
+
+  const handleGsSpreadsheetIdChange = useCallback(async (id: string) => {
+    setGsSpreadsheetId(id);
+  }, []);
+
   // 탭 상태
   const [activeTab, setActiveTab] = useState<TabType>('category');
 
@@ -238,29 +280,29 @@ export default function SettingsScreen() {
 
   // 결제수단 렌더링
   const renderPaymentMethod = ({ item }: { item: PaymentMethod }) => (
-    <View style={styles.listItem}>
+    <View style={[styles.listItem, { backgroundColor: theme.colors.cardBackground }]}>
       <View style={styles.itemInfo}>
         <Text style={styles.itemIcon}>{item.icon || '💳'}</Text>
         <View>
-          <Text style={styles.itemName}>{item.name}</Text>
+          <Text style={[styles.itemName, { color: theme.colors.text }]}>{item.name}</Text>
           {item.type && (
-            <Text style={styles.itemType}>{getPaymentTypeLabel(item.type)}</Text>
+            <Text style={[styles.itemType, { color: theme.colors.textTertiary }]}>{getPaymentTypeLabel(item.type)}</Text>
           )}
         </View>
       </View>
       <TouchableOpacity
-        style={styles.deleteButton}
+        style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
         onPress={() => handleDeletePayment(item.id, item.name)}
       >
-        <Text style={styles.deleteText}>삭제</Text>
+        <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderEmpty = (type: string) => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>{type}이(가) 없습니다</Text>
-      <Text style={styles.emptySubtext}>+ 버튼을 눌러 추가해보세요</Text>
+      <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>{type}이(가) 없습니다</Text>
+      <Text style={[styles.emptySubtext, { color: theme.colors.textTertiary }]}>+ 버튼을 눌러 추가해보세요</Text>
     </View>
   );
 
@@ -278,20 +320,60 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+      {/* 테마 설정 */}
+      <View style={[styles.themeSection, { backgroundColor: theme.colors.cardBackground, borderBottomColor: theme.colors.border }]}>
+        <Text style={[styles.themeSectionTitle, { color: theme.colors.text }]}>테마 설정</Text>
+        <View style={styles.themeOptions}>
+          {THEME_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.themeOption,
+                { backgroundColor: theme.colors.surface },
+                themeMode === option.value && { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary, borderWidth: 2 },
+              ]}
+              onPress={() => setThemeMode(option.value)}
+            >
+              <Text style={styles.themeOptionIcon}>{option.icon}</Text>
+              <Text style={[
+                styles.themeOptionLabel,
+                { color: theme.colors.textSecondary },
+                themeMode === option.value && { color: theme.colors.primary, fontWeight: '600' },
+              ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Google Sheets 연동 */}
+      <BackupRestoreSection
+        isSignedIn={gsIsSignedIn}
+        lastSync={gsLastSync}
+        spreadsheetId={gsSpreadsheetId}
+        onSignIn={handleGsSignIn}
+        onSignOut={handleGsSignOut}
+        onExport={handleGsExport}
+        onImport={handleGsImport}
+        onSpreadsheetIdChange={handleGsSpreadsheetIdChange}
+      />
+
       {/* 메인 탭 */}
-      <View style={styles.mainTabContainer}>
+      <View style={[styles.mainTabContainer, { backgroundColor: theme.colors.cardBackground, borderBottomColor: theme.colors.border }]}>
         <TouchableOpacity
           style={[
             styles.mainTab,
-            activeTab === 'category' && styles.mainTabActive,
+            activeTab === 'category' && { borderBottomColor: theme.colors.primary },
           ]}
           onPress={() => setActiveTab('category')}
         >
           <Text
             style={[
               styles.mainTabText,
-              activeTab === 'category' && styles.mainTabTextActive,
+              { color: theme.colors.textTertiary },
+              activeTab === 'category' && { color: theme.colors.primary },
             ]}
           >
             카테고리
@@ -300,14 +382,15 @@ export default function SettingsScreen() {
         <TouchableOpacity
           style={[
             styles.mainTab,
-            activeTab === 'paymentMethod' && styles.mainTabActive,
+            activeTab === 'paymentMethod' && { borderBottomColor: theme.colors.primary },
           ]}
           onPress={() => setActiveTab('paymentMethod')}
         >
           <Text
             style={[
               styles.mainTabText,
-              activeTab === 'paymentMethod' && styles.mainTabTextActive,
+              { color: theme.colors.textTertiary },
+              activeTab === 'paymentMethod' && { color: theme.colors.primary },
             ]}
           >
             결제수단
@@ -322,13 +405,15 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[
                 styles.subTab,
-                categoryType === 'expense' && styles.expenseActive,
+                { backgroundColor: theme.colors.border },
+                categoryType === 'expense' && { backgroundColor: theme.colors.expense },
               ]}
               onPress={() => setCategoryType('expense')}
             >
               <Text
                 style={[
                   styles.subTabText,
+                  { color: theme.colors.textSecondary },
                   categoryType === 'expense' && styles.subTabTextActive,
                 ]}
               >
@@ -338,13 +423,15 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[
                 styles.subTab,
-                categoryType === 'income' && styles.incomeActive,
+                { backgroundColor: theme.colors.border },
+                categoryType === 'income' && { backgroundColor: theme.colors.income },
               ]}
               onPress={() => setCategoryType('income')}
             >
               <Text
                 style={[
                   styles.subTabText,
+                  { color: theme.colors.textSecondary },
                   categoryType === 'income' && styles.subTabTextActive,
                 ]}
               >
@@ -362,7 +449,7 @@ export default function SettingsScreen() {
           />
 
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
             onPress={() => setCategoryModalVisible(true)}
           >
             <Text style={styles.addButtonText}>+ 카테고리 추가</Text>
@@ -382,7 +469,7 @@ export default function SettingsScreen() {
           />
 
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
             onPress={() => setPaymentModalVisible(true)}
           >
             <Text style={styles.addButtonText}>+ 결제수단 추가</Text>
@@ -397,28 +484,29 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setCategoryModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
               새 {categoryType === 'expense' ? '지출' : '수입'} 카테고리
             </Text>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
               placeholder="카테고리 이름"
               value={newCategoryName}
               onChangeText={setNewCategoryName}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.textTertiary}
             />
 
-            <Text style={styles.iconLabel}>아이콘 선택</Text>
+            <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>아이콘 선택</Text>
             <View style={styles.iconGrid}>
               {CATEGORY_ICONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.iconOption,
-                    newCategoryIcon === icon && styles.iconOptionActive,
+                    { backgroundColor: theme.colors.surface },
+                    newCategoryIcon === icon && { backgroundColor: theme.colors.primaryLight, borderWidth: 2, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => setNewCategoryIcon(icon)}
                 >
@@ -429,17 +517,17 @@ export default function SettingsScreen() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
                   setNewCategoryName('');
                   setNewCategoryIcon('');
                   setCategoryModalVisible(false);
                 }}
               >
-                <Text style={styles.cancelText}>취소</Text>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.confirmButton}
+                style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddCategory}
               >
                 <Text style={styles.confirmText}>추가</Text>
@@ -456,26 +544,27 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setSubCategoryModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>새 소분류</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 소분류</Text>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
               placeholder="소분류 이름"
               value={newSubCategoryName}
               onChangeText={setNewSubCategoryName}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.textTertiary}
             />
 
-            <Text style={styles.iconLabel}>아이콘 선택</Text>
+            <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>아이콘 선택</Text>
             <View style={styles.iconGrid}>
               {SUB_CATEGORY_ICONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.iconOption,
-                    newSubCategoryIcon === icon && styles.iconOptionActive,
+                    { backgroundColor: theme.colors.surface },
+                    newSubCategoryIcon === icon && { backgroundColor: theme.colors.primaryLight, borderWidth: 2, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => setNewSubCategoryIcon(icon)}
                 >
@@ -486,17 +575,17 @@ export default function SettingsScreen() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
                   setNewSubCategoryName('');
                   setNewSubCategoryIcon('');
                   setSubCategoryModalVisible(false);
                 }}
               >
-                <Text style={styles.cancelText}>취소</Text>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.confirmButton}
+                style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddSubCategory}
               >
                 <Text style={styles.confirmText}>추가</Text>
@@ -513,32 +602,34 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setPaymentModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>새 결제수단</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 결제수단</Text>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
               placeholder="결제수단 이름 (예: 신한카드)"
               value={newPaymentName}
               onChangeText={setNewPaymentName}
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.textTertiary}
             />
 
-            <Text style={styles.iconLabel}>유형 선택</Text>
+            <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>유형 선택</Text>
             <View style={styles.optionsContainer}>
               {PAYMENT_TYPE_OPTIONS.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   style={[
                     styles.typeOption,
-                    newPaymentType === option.value && styles.typeOptionActive,
+                    { backgroundColor: theme.colors.surface },
+                    newPaymentType === option.value && { backgroundColor: theme.colors.primary },
                   ]}
                   onPress={() => setNewPaymentType(option.value)}
                 >
                   <Text
                     style={[
                       styles.typeOptionText,
+                      { color: theme.colors.textSecondary },
                       newPaymentType === option.value && styles.typeOptionTextActive,
                     ]}
                   >
@@ -548,14 +639,15 @@ export default function SettingsScreen() {
               ))}
             </View>
 
-            <Text style={styles.iconLabel}>아이콘 선택</Text>
+            <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>아이콘 선택</Text>
             <View style={styles.iconGrid}>
               {PAYMENT_ICONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
                   style={[
                     styles.iconOption,
-                    newPaymentIcon === icon && styles.iconOptionActive,
+                    { backgroundColor: theme.colors.surface },
+                    newPaymentIcon === icon && { backgroundColor: theme.colors.primaryLight, borderWidth: 2, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => setNewPaymentIcon(icon)}
                 >
@@ -566,7 +658,7 @@ export default function SettingsScreen() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
                   setNewPaymentName('');
                   setNewPaymentIcon('');
@@ -574,10 +666,10 @@ export default function SettingsScreen() {
                   setPaymentModalVisible(false);
                 }}
               >
-                <Text style={styles.cancelText}>취소</Text>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.confirmButton}
+                style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddPayment}
               >
                 <Text style={styles.confirmText}>추가</Text>
@@ -593,13 +685,36 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+  },
+  themeSection: {
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  themeSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  themeOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  themeOptionIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  themeOptionLabel: {
+    fontSize: 12,
   },
   mainTabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   mainTab: {
     flex: 1,
@@ -608,16 +723,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  mainTabActive: {
-    borderBottomColor: '#2196F3',
-  },
   mainTabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#999',
-  },
-  mainTabTextActive: {
-    color: '#2196F3',
   },
   subTabContainer: {
     flexDirection: 'row',
@@ -628,19 +736,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#E0E0E0',
     alignItems: 'center',
-  },
-  expenseActive: {
-    backgroundColor: '#F44336',
-  },
-  incomeActive: {
-    backgroundColor: '#4CAF50',
   },
   subTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
   },
   subTabTextActive: {
     color: '#FFF',
@@ -653,7 +753,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
@@ -669,22 +768,18 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
   },
   itemType: {
     fontSize: 12,
-    color: '#999',
     marginTop: 2,
   },
   deleteButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#FFEBEE',
   },
   deleteText: {
     fontSize: 14,
-    color: '#F44336',
   },
   emptyContainer: {
     flex: 1,
@@ -694,18 +789,15 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#999',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#BBB',
   },
   addButton: {
     margin: 16,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#2196F3',
     alignItems: 'center',
   },
   addButtonText: {
@@ -715,11 +807,9 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
@@ -731,7 +821,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#F5F5F5',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -741,7 +830,6 @@ const styles = StyleSheet.create({
   iconLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
     marginBottom: 12,
   },
   iconGrid: {
@@ -754,14 +842,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconOptionActive: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 2,
-    borderColor: '#2196F3',
   },
   iconText: {
     fontSize: 24,
@@ -776,14 +858,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#F5F5F5',
-  },
-  typeOptionActive: {
-    backgroundColor: '#2196F3',
   },
   typeOptionText: {
     fontSize: 14,
-    color: '#666',
   },
   typeOptionTextActive: {
     color: '#FFF',
@@ -796,19 +873,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#E0E0E0',
     alignItems: 'center',
   },
   cancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
   },
   confirmButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#2196F3',
     alignItems: 'center',
   },
   confirmText: {

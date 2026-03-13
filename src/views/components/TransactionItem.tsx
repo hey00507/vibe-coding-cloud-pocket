@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Transaction } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -26,20 +27,21 @@ export default function TransactionItem({
   paymentMethodName,
   onDelete,
 }: TransactionItemProps) {
+  const { theme } = useTheme();
   const isExpense = transaction.type === 'expense';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
       <View style={styles.leftSection}>
         <View style={styles.header}>
-          <Text style={styles.category}>
+          <Text style={[styles.category, { color: theme.colors.text }]}>
             {subCategoryName ? `${categoryName} > ${subCategoryName}` : categoryName}
           </Text>
-          <Text style={styles.date}>{formatDate(transaction.date)}</Text>
+          <Text style={[styles.date, { color: theme.colors.textTertiary }]}>{formatDate(transaction.date)}</Text>
         </View>
-        <Text style={styles.paymentMethod}>{paymentMethodName}</Text>
+        <Text style={[styles.paymentMethod, { color: theme.colors.textSecondary }]}>{paymentMethodName}</Text>
         {transaction.memo && (
-          <Text style={styles.memo} numberOfLines={1}>
+          <Text style={[styles.memo, { color: theme.colors.textTertiary }]} numberOfLines={1}>
             {transaction.memo}
           </Text>
         )}
@@ -48,14 +50,14 @@ export default function TransactionItem({
         <Text
           style={[
             styles.amount,
-            isExpense ? styles.expenseAmount : styles.incomeAmount,
+            { color: isExpense ? theme.colors.expense : theme.colors.income },
           ]}
         >
           {isExpense ? '-' : '+'}
           {formatCurrency(transaction.amount)}
         </Text>
         <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-          <Text style={styles.deleteText}>삭제</Text>
+          <Text style={[styles.deleteText, { color: theme.colors.textTertiary }]}>삭제</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -67,7 +69,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
@@ -83,20 +84,16 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   date: {
     fontSize: 12,
-    color: '#999',
   },
   paymentMethod: {
     fontSize: 12,
-    color: '#666',
     marginTop: 4,
   },
   memo: {
     fontSize: 12,
-    color: '#999',
     marginTop: 4,
   },
   rightSection: {
@@ -107,18 +104,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  incomeAmount: {
-    color: '#4CAF50',
-  },
-  expenseAmount: {
-    color: '#F44336',
-  },
   deleteButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   deleteText: {
     fontSize: 12,
-    color: '#999',
   },
 });

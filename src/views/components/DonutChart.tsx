@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import { useTheme } from '../../controllers/useTheme';
 
 export interface DonutChartSegment {
   id: string;
@@ -25,13 +26,15 @@ const DonutChart: React.FC<DonutChartProps> = ({
   centerLabel,
   centerValue,
 }) => {
+  const { theme } = useTheme();
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
   if (segments.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
         <View style={styles.chartWrapper}>
           <Svg width={size} height={size} testID="donut-svg">
             <Circle
@@ -39,13 +42,13 @@ const DonutChart: React.FC<DonutChartProps> = ({
               cx={center}
               cy={center}
               r={radius}
-              stroke="#E0E0E0"
+              stroke={theme.colors.border}
               strokeWidth={strokeWidth}
               fill="none"
             />
           </Svg>
         </View>
-        <Text style={styles.emptyText}>데이터가 없습니다</Text>
+        <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>데이터가 없습니다</Text>
       </View>
     );
   }
@@ -53,7 +56,7 @@ const DonutChart: React.FC<DonutChartProps> = ({
   let cumulativePercentage = 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
       <View style={styles.chartWrapper}>
         <Svg width={size} height={size} testID="donut-svg">
           {/* 배경 원 */}
@@ -61,7 +64,7 @@ const DonutChart: React.FC<DonutChartProps> = ({
             cx={center}
             cy={center}
             r={radius}
-            stroke="#F0F0F0"
+            stroke={theme.colors.borderLight}
             strokeWidth={strokeWidth}
             fill="none"
           />
@@ -99,7 +102,7 @@ const DonutChart: React.FC<DonutChartProps> = ({
               y={center - 8}
               textAnchor="middle"
               fontSize={12}
-              fill="#999"
+              fill={theme.colors.textTertiary}
             >
               {centerLabel}
             </SvgText>
@@ -112,7 +115,7 @@ const DonutChart: React.FC<DonutChartProps> = ({
               textAnchor="middle"
               fontSize={14}
               fontWeight="bold"
-              fill="#333"
+              fill={theme.colors.text}
             >
               {centerValue}
             </SvgText>
@@ -127,8 +130,8 @@ const DonutChart: React.FC<DonutChartProps> = ({
               testID={`legend-color-${index}`}
               style={[styles.legendDot, { backgroundColor: segment.color }]}
             />
-            <Text style={styles.legendLabel}>{segment.label}</Text>
-            <Text style={styles.legendPercentage}>{segment.percentage}%</Text>
+            <Text style={[styles.legendLabel, { color: theme.colors.textSecondary }]}>{segment.label}</Text>
+            <Text style={[styles.legendPercentage, { color: theme.colors.text }]}>{segment.percentage}%</Text>
           </View>
         ))}
       </View>
@@ -138,7 +141,6 @@ const DonutChart: React.FC<DonutChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -151,7 +153,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
     paddingVertical: 10,
   },
@@ -175,13 +176,11 @@ const styles = StyleSheet.create({
   },
   legendLabel: {
     fontSize: 12,
-    color: '#666',
     marginRight: 4,
   },
   legendPercentage: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#333',
   },
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '../test-utils';
 import DayDetailModal from '../../src/views/components/DayDetailModal';
 import { Transaction, Category, PaymentMethod } from '../../src/types';
 

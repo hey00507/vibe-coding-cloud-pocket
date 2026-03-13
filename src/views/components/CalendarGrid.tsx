@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import DayCell from './DayCell';
 import { DailySummary } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface CalendarGridProps {
   year: number;
@@ -22,6 +23,8 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   selectable = false,
   selectedDay,
 }) => {
+  const { theme } = useTheme();
+
   const getDaysInMonth = (y: number, m: number): number => {
     return new Date(y, m, 0).getDate();
   };
@@ -52,16 +55,13 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  // 캘린더 그리드 생성
   const weeks: (number | null)[][] = [];
   let currentWeek: (number | null)[] = [];
 
-  // 첫 주의 빈 칸
   for (let i = 0; i < firstDay; i++) {
     currentWeek.push(null);
   }
 
-  // 날짜 채우기
   for (let day = 1; day <= daysInMonth; day++) {
     currentWeek.push(day);
     if (currentWeek.length === 7) {
@@ -70,7 +70,6 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
     }
   }
 
-  // 마지막 주의 빈 칸
   if (currentWeek.length > 0) {
     while (currentWeek.length < 7) {
       currentWeek.push(null);
@@ -80,15 +79,15 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* 요일 헤더 */}
-      <View style={styles.weekdayRow}>
+      <View style={[styles.weekdayRow, { borderBottomColor: theme.colors.borderLight }]}>
         {WEEKDAYS.map((day, index) => (
           <View key={index} style={styles.weekdayCell}>
             <Text
               style={[
                 styles.weekdayText,
-                index === 0 && styles.sundayText,
-                index === 6 && styles.saturdayText,
+                { color: theme.colors.textSecondary },
+                index === 0 && { color: theme.colors.expense },
+                index === 6 && { color: theme.colors.primary },
               ]}
             >
               {day}
@@ -97,7 +96,6 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({
         ))}
       </View>
 
-      {/* 날짜 그리드 */}
       {weeks.map((week, weekIndex) => (
         <View key={weekIndex} style={styles.weekRow}>
           {week.map((day, dayIndex) => {
@@ -128,7 +126,6 @@ const styles = StyleSheet.create({
   weekdayRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     paddingBottom: 8,
     marginBottom: 4,
   },
@@ -138,14 +135,7 @@ const styles = StyleSheet.create({
   },
   weekdayText: {
     fontSize: 12,
-    color: '#666',
     fontWeight: '500',
-  },
-  sundayText: {
-    color: '#F44336',
-  },
-  saturdayText: {
-    color: '#2196F3',
   },
   weekRow: {
     flexDirection: 'row',

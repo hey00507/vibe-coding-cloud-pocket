@@ -19,25 +19,14 @@ import SummaryCard from '../components/SummaryCard';
 import BreakdownList, { BreakdownItem } from '../components/BreakdownList';
 import DonutChart, { DonutChartSegment } from '../components/DonutChart';
 import GroupedBarChart, { MonthlyBarData } from '../components/GroupedBarChart';
-
-const CHART_COLORS = [
-  '#FF6384',
-  '#36A2EB',
-  '#FFCE56',
-  '#4BC0C0',
-  '#9966FF',
-  '#FF9F40',
-  '#E7E9ED',
-  '#7BC8A4',
-  '#FF8A80',
-  '#B39DDB',
-];
+import { useTheme } from '../../controllers/useTheme';
 
 const formatCurrency = (amount: number): string => {
   return amount.toLocaleString('ko-KR') + '원';
 };
 
 export default function StatisticsScreen({}: StatisticsScreenProps) {
+  const { theme } = useTheme();
   const now = new Date();
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
@@ -146,7 +135,7 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
         label: category?.name ?? '미분류',
         value: item.amount,
         percentage: item.percentage,
-        color: CHART_COLORS[index % CHART_COLORS.length],
+        color: theme.colors.chartColors[index % theme.colors.chartColors.length],
       };
     });
   };
@@ -194,7 +183,7 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.surface }]}>
       <PeriodSelector
         periodType={periodType}
         year={currentYear}
@@ -226,6 +215,5 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
 });

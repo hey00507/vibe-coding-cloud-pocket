@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { BankAccount, BankTier } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface AssetOverviewProps {
   accounts: BankAccount[];
@@ -20,6 +21,8 @@ const TIER_LABELS: Record<BankTier, string> = {
 const TIER_ORDER: BankTier[] = ['primary', 'secondary', 'savings_bank'];
 
 export default function AssetOverview({ accounts, totalAssets }: AssetOverviewProps) {
+  const { theme } = useTheme();
+
   // 등급별 그룹화
   const groupedByTier = TIER_ORDER.map((tier) => ({
     tier,
@@ -29,28 +32,28 @@ export default function AssetOverview({ accounts, totalAssets }: AssetOverviewPr
   })).filter((group) => group.accounts.length > 0);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>자산 현황</Text>
-        <Text style={styles.totalAmount}>{formatCurrency(totalAssets)}</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
+      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>자산 현황</Text>
+        <Text style={[styles.totalAmount, { color: theme.colors.primaryDark }]}>{formatCurrency(totalAssets)}</Text>
       </View>
 
       {accounts.length === 0 ? (
-        <Text style={styles.emptyText}>등록된 계좌가 없습니다</Text>
+        <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>등록된 계좌가 없습니다</Text>
       ) : (
         groupedByTier.map((group) => (
           <View key={group.tier} style={styles.tierGroup}>
-            <View style={styles.tierHeader}>
-              <Text style={styles.tierLabel}>{group.label}</Text>
-              <Text style={styles.tierSubtotal}>{formatCurrency(group.subtotal)}</Text>
+            <View style={[styles.tierHeader, { backgroundColor: theme.colors.surface }]}>
+              <Text style={[styles.tierLabel, { color: theme.colors.textSecondary }]}>{group.label}</Text>
+              <Text style={[styles.tierSubtotal, { color: theme.colors.text }]}>{formatCurrency(group.subtotal)}</Text>
             </View>
             {group.accounts.map((account) => (
-              <View key={account.id} style={styles.accountRow}>
+              <View key={account.id} style={[styles.accountRow, { borderBottomColor: theme.colors.borderLight }]}>
                 <View style={styles.accountInfo}>
-                  <Text style={styles.bankName}>{account.bank}</Text>
-                  <Text style={styles.purpose}>{account.purpose}</Text>
+                  <Text style={[styles.bankName, { color: theme.colors.text }]}>{account.bank}</Text>
+                  <Text style={[styles.purpose, { color: theme.colors.textTertiary }]}>{account.purpose}</Text>
                 </View>
-                <Text style={[styles.balance, !account.isActive && styles.inactiveBalance]}>
+                <Text style={[styles.balance, { color: theme.colors.text }, !account.isActive && { color: theme.colors.textTertiary }]}>
                   {formatCurrency(account.balance)}
                 </Text>
               </View>
@@ -64,7 +67,6 @@ export default function AssetOverview({ accounts, totalAssets }: AssetOverviewPr
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -77,21 +79,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 2,
-    borderBottomColor: '#E0E0E0',
   },
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   totalAmount: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1565C0',
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
     paddingVertical: 20,
   },
@@ -102,7 +100,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -111,12 +108,10 @@ const styles = StyleSheet.create({
   tierLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#555',
   },
   tierSubtotal: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
   },
   accountRow: {
     flexDirection: 'row',
@@ -125,7 +120,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   accountInfo: {
     flex: 1,
@@ -133,19 +127,13 @@ const styles = StyleSheet.create({
   bankName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
   },
   purpose: {
     fontSize: 12,
-    color: '#999',
     marginTop: 2,
   },
   balance: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
-  },
-  inactiveBalance: {
-    color: '#999',
   },
 });

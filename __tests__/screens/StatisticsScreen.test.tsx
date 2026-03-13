@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '../test-utils';
 import StatisticsScreen from '../../src/views/screens/StatisticsScreen';
 import {
   transactionService,

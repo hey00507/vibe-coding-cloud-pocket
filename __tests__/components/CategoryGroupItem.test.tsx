@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '../test-utils';
 import CategoryGroupItem from '../../src/views/components/CategoryGroupItem';
 import { Category, SubCategory } from '../../src/types';
 

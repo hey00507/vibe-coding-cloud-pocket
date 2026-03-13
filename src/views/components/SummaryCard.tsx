@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../controllers/useTheme';
 
 interface SummaryCardProps {
   balance: number;
@@ -22,36 +23,37 @@ export default function SummaryCard({
   savingsRate,
   remainingCash,
 }: SummaryCardProps) {
+  const { theme } = useTheme();
   const showExtended = totalSavings !== undefined && totalSavings > 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.primary }]}>
       <View style={styles.balanceSection}>
         <Text style={styles.balanceLabel}>잔액</Text>
         <Text
-          style={[styles.balanceAmount, balance < 0 && styles.negativeBalance]}
+          style={[styles.balanceAmount, balance < 0 && { color: theme.colors.expenseSoft }]}
         >
           {formatCurrency(balance)}
         </Text>
       </View>
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: theme.colors.divider }]} />
       <View style={styles.detailsSection}>
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>수입</Text>
-          <Text style={[styles.detailAmount, styles.incomeAmount]}>
+          <Text style={[styles.detailAmount, { color: theme.colors.incomeSoft }]}>
             +{formatCurrency(totalIncome)}
           </Text>
         </View>
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>지출</Text>
-          <Text style={[styles.detailAmount, styles.expenseAmount]}>
+          <Text style={[styles.detailAmount, { color: theme.colors.expenseSoft }]}>
             -{formatCurrency(totalExpense)}
           </Text>
         </View>
       </View>
       {showExtended && (
         <>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.colors.divider }]} />
           <View style={styles.detailsSection}>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>저축</Text>
@@ -73,7 +75,7 @@ export default function SummaryCard({
                 <Text
                   style={[
                     styles.detailAmount,
-                    remainingCash >= 0 ? styles.incomeAmount : styles.expenseAmount,
+                    { color: remainingCash >= 0 ? theme.colors.incomeSoft : theme.colors.expenseSoft },
                   ]}
                 >
                   {formatCurrency(remainingCash)}
@@ -89,7 +91,6 @@ export default function SummaryCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#2196F3',
     margin: 16,
     borderRadius: 16,
     padding: 20,
@@ -108,12 +109,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
   },
-  negativeBalance: {
-    color: '#FFCDD2',
-  },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     marginVertical: 12,
   },
   detailsSection: {
@@ -131,12 +128,6 @@ const styles = StyleSheet.create({
   detailAmount: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  incomeAmount: {
-    color: '#A5D6A7',
-  },
-  expenseAmount: {
-    color: '#FFCDD2',
   },
   savingsAmount: {
     color: '#90CAF9',

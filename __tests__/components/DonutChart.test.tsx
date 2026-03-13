@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen } from '../test-utils';
 import DonutChart, { DonutChartSegment } from '../../src/views/components/DonutChart';
 
 const sampleSegments: DonutChartSegment[] = [

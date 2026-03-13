@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen } from '../test-utils';
 import SavingsSummaryCard from '../../src/views/components/SavingsSummaryCard';
 
 describe('SavingsSummaryCard', () => {

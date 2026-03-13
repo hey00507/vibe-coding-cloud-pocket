@@ -8,6 +8,7 @@ import {
   FlatList,
 } from 'react-native';
 import { Transaction, Category, PaymentMethod } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface DayDetailModalProps {
   visible: boolean;
@@ -26,6 +27,8 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({
   paymentMethods,
   onClose,
 }) => {
+  const { theme } = useTheme();
+
   const formatDate = (d: Date): string => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
@@ -65,21 +68,21 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({
   const dailyBalance = totalIncome - totalExpense;
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
-    <View style={styles.transactionItem}>
+    <View style={[styles.transactionItem, { borderBottomColor: theme.colors.borderLight }]}>
       <View style={styles.transactionLeft}>
         <Text style={styles.categoryIcon}>{getCategoryIcon(item.categoryId)}</Text>
         <View>
-          <Text style={styles.categoryName}>{getCategoryName(item.categoryId)}</Text>
-          <Text style={styles.paymentMethod}>
+          <Text style={[styles.categoryName, { color: theme.colors.text }]}>{getCategoryName(item.categoryId)}</Text>
+          <Text style={[styles.paymentMethod, { color: theme.colors.textSecondary }]}>
             {getPaymentMethodName(item.paymentMethodId)}
           </Text>
-          {item.memo && <Text style={styles.memo}>{item.memo}</Text>}
+          {item.memo && <Text style={[styles.memo, { color: theme.colors.textTertiary }]}>{item.memo}</Text>}
         </View>
       </View>
       <Text
         style={[
           styles.amount,
-          item.type === 'income' ? styles.incomeAmount : styles.expenseAmount,
+          { color: item.type === 'income' ? theme.colors.income : theme.colors.expense },
         ]}
       >
         {formatAmount(item.amount, item.type)}
@@ -96,17 +99,15 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          {/* 헤더 */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{formatDate(date)}</Text>
+      <View style={[styles.overlay, { backgroundColor: theme.colors.modalOverlay }]}>
+        <View style={[styles.container, { backgroundColor: theme.colors.modalBackground }]}>
+          <View style={[styles.header, { borderBottomColor: theme.colors.borderLight }]}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>{formatDate(date)}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeText}>✕</Text>
+              <Text style={[styles.closeText, { color: theme.colors.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* 거래 목록 */}
           {transactions.length > 0 ? (
             <FlatList
               data={transactions}
@@ -116,18 +117,17 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({
             />
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
+              <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>거래 내역이 없습니다</Text>
             </View>
           )}
 
-          {/* 일일 합계 */}
           {transactions.length > 0 && (
-            <View style={styles.summary}>
-              <Text style={styles.summaryLabel}>일일 합계</Text>
+            <View style={[styles.summary, { borderTopColor: theme.colors.borderLight, backgroundColor: theme.colors.surfaceVariant }]}>
+              <Text style={[styles.summaryLabel, { color: theme.colors.text }]}>일일 합계</Text>
               <Text
                 style={[
                   styles.summaryAmount,
-                  dailyBalance >= 0 ? styles.incomeAmount : styles.expenseAmount,
+                  { color: dailyBalance >= 0 ? theme.colors.income : theme.colors.expense },
                 ]}
               >
                 {dailyBalance >= 0 ? '+' : ''}
@@ -144,11 +144,9 @@ const DayDetailModal: React.FC<DayDetailModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -159,19 +157,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   closeButton: {
     padding: 8,
   },
   closeText: {
     fontSize: 18,
-    color: '#666',
   },
   list: {
     paddingHorizontal: 16,
@@ -182,7 +177,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   transactionLeft: {
     flexDirection: 'row',
@@ -196,27 +190,18 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
   },
   paymentMethod: {
     fontSize: 12,
-    color: '#666',
     marginTop: 2,
   },
   memo: {
     fontSize: 12,
-    color: '#999',
     marginTop: 2,
   },
   amount: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  incomeAmount: {
-    color: '#4CAF50',
-  },
-  expenseAmount: {
-    color: '#F44336',
   },
   emptyContainer: {
     padding: 40,
@@ -224,7 +209,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
   },
   summary: {
     flexDirection: 'row',
@@ -232,13 +216,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#f9f9f9',
   },
   summaryLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
   },
   summaryAmount: {
     fontSize: 18,

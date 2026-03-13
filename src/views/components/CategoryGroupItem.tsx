@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Category, SubCategory } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface CategoryGroupItemProps {
   category: Category;
@@ -21,36 +22,38 @@ export default function CategoryGroupItem({
   onDeleteSubCategory,
   onAddSubCategory,
 }: CategoryGroupItemProps) {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
       <TouchableOpacity style={styles.header} onPress={onToggle}>
         <View style={styles.headerLeft}>
-          <Text style={styles.expandIcon}>{expanded ? '▼' : '▶'}</Text>
+          <Text style={[styles.expandIcon, { color: theme.colors.textSecondary }]}>{expanded ? '▼' : '▶'}</Text>
           <Text style={styles.categoryIcon}>{category.icon || '📁'}</Text>
-          <Text style={styles.categoryName}>{category.name}</Text>
-          <Text style={styles.count}>({subCategories.length})</Text>
+          <Text style={[styles.categoryName, { color: theme.colors.text }]}>{category.name}</Text>
+          <Text style={[styles.count, { color: theme.colors.textTertiary }]}>({subCategories.length})</Text>
         </View>
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
           onPress={() => onDeleteCategory(category.id, category.name)}
         >
-          <Text style={styles.deleteText}>삭제</Text>
+          <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
         </TouchableOpacity>
       </TouchableOpacity>
 
       {expanded && (
         <View style={styles.subList}>
           {subCategories.map((sub) => (
-            <View key={sub.id} style={styles.subItem}>
+            <View key={sub.id} style={[styles.subItem, { borderBottomColor: theme.colors.borderLight }]}>
               <View style={styles.subItemLeft}>
                 <Text style={styles.subIcon}>{sub.icon || '📋'}</Text>
-                <Text style={styles.subName}>{sub.name}</Text>
+                <Text style={[styles.subName, { color: theme.colors.textSecondary }]}>{sub.name}</Text>
               </View>
               <TouchableOpacity
                 style={styles.subDeleteButton}
                 onPress={() => onDeleteSubCategory(sub.id, sub.name)}
               >
-                <Text style={styles.subDeleteText}>삭제</Text>
+                <Text style={[styles.subDeleteText, { color: theme.colors.textTertiary }]}>삭제</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -58,7 +61,7 @@ export default function CategoryGroupItem({
             style={styles.addSubButton}
             onPress={() => onAddSubCategory(category.id)}
           >
-            <Text style={styles.addSubText}>+ 소분류 추가</Text>
+            <Text style={[styles.addSubText, { color: theme.colors.primary }]}>+ 소분류 추가</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -68,7 +71,6 @@ export default function CategoryGroupItem({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     marginBottom: 8,
     overflow: 'hidden',
@@ -86,7 +88,6 @@ const styles = StyleSheet.create({
   },
   expandIcon: {
     fontSize: 12,
-    color: '#666',
   },
   categoryIcon: {
     fontSize: 20,
@@ -94,21 +95,17 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   count: {
     fontSize: 12,
-    color: '#999',
   },
   deleteButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#FFEBEE',
   },
   deleteText: {
     fontSize: 14,
-    color: '#F44336',
   },
   subList: {
     paddingLeft: 44,
@@ -121,7 +118,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   subItemLeft: {
     flexDirection: 'row',
@@ -133,7 +129,6 @@ const styles = StyleSheet.create({
   },
   subName: {
     fontSize: 14,
-    color: '#555',
   },
   subDeleteButton: {
     paddingHorizontal: 8,
@@ -141,7 +136,6 @@ const styles = StyleSheet.create({
   },
   subDeleteText: {
     fontSize: 12,
-    color: '#999',
   },
   addSubButton: {
     paddingVertical: 10,
@@ -149,7 +143,6 @@ const styles = StyleSheet.create({
   },
   addSubText: {
     fontSize: 14,
-    color: '#2196F3',
     fontWeight: '500',
   },
 });

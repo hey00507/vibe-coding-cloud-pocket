@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../controllers/useTheme';
 
 export type ViewMode = 'list' | 'calendar';
 
@@ -9,21 +10,23 @@ interface ViewToggleProps {
 }
 
 const ViewToggle: React.FC<ViewToggleProps> = ({ view, onViewChange }) => {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.borderLight }]}>
       <TouchableOpacity
-        style={[styles.button, view === 'list' && styles.activeButton]}
+        style={[styles.button, view === 'list' && { backgroundColor: theme.colors.cardBackground }]}
         onPress={() => onViewChange('list')}
       >
-        <Text style={[styles.text, view === 'list' && styles.activeText]}>
+        <Text style={[styles.text, { color: theme.colors.textSecondary }, view === 'list' && { color: theme.colors.text, fontWeight: '600' }]}>
           리스트
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.button, view === 'calendar' && styles.activeButton]}
+        style={[styles.button, view === 'calendar' && { backgroundColor: theme.colors.cardBackground }]}
         onPress={() => onViewChange('calendar')}
       >
-        <Text style={[styles.text, view === 'calendar' && styles.activeText]}>
+        <Text style={[styles.text, { color: theme.colors.textSecondary }, view === 'calendar' && { color: theme.colors.text, fontWeight: '600' }]}>
           캘린더
         </Text>
       </TouchableOpacity>
@@ -34,7 +37,6 @@ const ViewToggle: React.FC<ViewToggleProps> = ({ view, onViewChange }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
     padding: 4,
     marginHorizontal: 16,
@@ -46,16 +48,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 6,
   },
-  activeButton: {
-    backgroundColor: '#fff',
-  },
   text: {
     fontSize: 14,
-    color: '#666',
-  },
-  activeText: {
-    color: '#000',
-    fontWeight: '600',
   },
 });
 

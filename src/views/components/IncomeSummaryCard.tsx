@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../controllers/useTheme';
 
 export interface IncomeComparisonItem {
   categoryName: string;
@@ -16,24 +17,26 @@ const formatCurrency = (amount: number): string => {
 };
 
 export default function IncomeSummaryCard({ items }: IncomeSummaryCardProps) {
+  const { theme } = useTheme();
+
   const totalTarget = items.reduce((sum, item) => sum + item.targetAmount, 0);
   const totalActual = items.reduce((sum, item) => sum + item.actualAmount, 0);
   const achievementRate = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>수입 목표/실적</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.cardBackground }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>수입 목표/실적</Text>
 
       {items.length === 0 ? (
-        <Text style={styles.emptyText}>수입 목표가 없습니다</Text>
+        <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>수입 목표가 없습니다</Text>
       ) : (
         <>
           {/* 헤더 */}
-          <View style={styles.headerRow}>
-            <Text style={[styles.headerText, styles.categoryCol]}>카테고리</Text>
-            <Text style={[styles.headerText, styles.amountCol]}>목표</Text>
-            <Text style={[styles.headerText, styles.amountCol]}>실적</Text>
-            <Text style={[styles.headerText, styles.rateCol]}>달성률</Text>
+          <View style={[styles.headerRow, { borderBottomColor: theme.colors.border }]}>
+            <Text style={[styles.headerText, styles.categoryCol, { color: theme.colors.textSecondary }]}>카테고리</Text>
+            <Text style={[styles.headerText, styles.amountCol, { color: theme.colors.textSecondary }]}>목표</Text>
+            <Text style={[styles.headerText, styles.amountCol, { color: theme.colors.textSecondary }]}>실적</Text>
+            <Text style={[styles.headerText, styles.rateCol, { color: theme.colors.textSecondary }]}>달성률</Text>
           </View>
 
           {/* 항목 */}
@@ -42,15 +45,15 @@ export default function IncomeSummaryCard({ items }: IncomeSummaryCardProps) {
               ? Math.round((item.actualAmount / item.targetAmount) * 100)
               : 0;
             return (
-              <View key={index} style={styles.dataRow}>
-                <Text style={[styles.dataText, styles.categoryCol]}>{item.categoryName}</Text>
-                <Text style={[styles.dataText, styles.amountCol]}>
+              <View key={index} style={[styles.dataRow, { borderBottomColor: theme.colors.borderLight }]}>
+                <Text style={[styles.dataText, styles.categoryCol, { color: theme.colors.text }]}>{item.categoryName}</Text>
+                <Text style={[styles.dataText, styles.amountCol, { color: theme.colors.text }]}>
                   {formatCurrency(item.targetAmount)}
                 </Text>
-                <Text style={[styles.dataText, styles.amountCol, item.actualAmount >= item.targetAmount ? styles.successText : styles.warningText]}>
+                <Text style={[styles.dataText, styles.amountCol, { color: item.actualAmount >= item.targetAmount ? theme.colors.income : theme.colors.warning }]}>
                   {formatCurrency(item.actualAmount)}
                 </Text>
-                <Text style={[styles.dataText, styles.rateCol, rate >= 100 ? styles.successText : styles.warningText]}>
+                <Text style={[styles.dataText, styles.rateCol, { color: rate >= 100 ? theme.colors.income : theme.colors.warning }]}>
                   {rate}%
                 </Text>
               </View>
@@ -58,15 +61,15 @@ export default function IncomeSummaryCard({ items }: IncomeSummaryCardProps) {
           })}
 
           {/* 합계 */}
-          <View style={styles.totalRow}>
-            <Text style={[styles.totalText, styles.categoryCol]}>합계</Text>
-            <Text style={[styles.totalText, styles.amountCol]}>
+          <View style={[styles.totalRow, { borderTopColor: theme.colors.border }]}>
+            <Text style={[styles.totalText, styles.categoryCol, { color: theme.colors.text }]}>합계</Text>
+            <Text style={[styles.totalText, styles.amountCol, { color: theme.colors.text }]}>
               {formatCurrency(totalTarget)}
             </Text>
-            <Text style={[styles.totalText, styles.amountCol]}>
+            <Text style={[styles.totalText, styles.amountCol, { color: theme.colors.text }]}>
               {formatCurrency(totalActual)}
             </Text>
-            <Text style={[styles.totalText, styles.rateCol, achievementRate >= 100 ? styles.successText : styles.warningText]}>
+            <Text style={[styles.totalText, styles.rateCol, { color: achievementRate >= 100 ? theme.colors.income : theme.colors.warning }]}>
               {achievementRate}%
             </Text>
           </View>
@@ -78,7 +81,6 @@ export default function IncomeSummaryCard({ items }: IncomeSummaryCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -87,12 +89,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
     paddingVertical: 20,
   },
@@ -100,35 +100,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
     marginBottom: 4,
   },
   headerText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
   },
   dataRow: {
     flexDirection: 'row',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   dataText: {
     fontSize: 13,
-    color: '#333',
   },
   totalRow: {
     flexDirection: 'row',
     paddingTop: 8,
     marginTop: 4,
     borderTopWidth: 2,
-    borderTopColor: '#E0E0E0',
   },
   totalText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#333',
   },
   categoryCol: {
     flex: 2,
@@ -140,11 +134,5 @@ const styles = StyleSheet.create({
   rateCol: {
     flex: 1,
     textAlign: 'right',
-  },
-  successText: {
-    color: '#4CAF50',
-  },
-  warningText: {
-    color: '#FF9800',
   },
 });

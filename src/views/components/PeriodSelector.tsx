@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { PeriodType } from '../../types';
+import { useTheme } from '../../controllers/useTheme';
 
 interface PeriodSelectorProps {
   periodType: PeriodType;
@@ -19,23 +20,26 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
   onPrev,
   onNext,
 }) => {
+  const { theme } = useTheme();
+
   const label =
     periodType === 'monthly' ? `${year}년 ${month}월` : `${year}년`;
 
   return (
     <View>
-      <View style={styles.toggleContainer}>
+      <View style={[styles.toggleContainer, { backgroundColor: theme.colors.borderLight }]}>
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            periodType === 'monthly' && styles.activeToggle,
+            periodType === 'monthly' && { backgroundColor: theme.colors.cardBackground },
           ]}
           onPress={() => onPeriodTypeChange('monthly')}
         >
           <Text
             style={[
               styles.toggleText,
-              periodType === 'monthly' && styles.activeToggleText,
+              { color: theme.colors.textSecondary },
+              periodType === 'monthly' && { color: theme.colors.text, fontWeight: '600' },
             ]}
           >
             월별
@@ -44,14 +48,15 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            periodType === 'yearly' && styles.activeToggle,
+            periodType === 'yearly' && { backgroundColor: theme.colors.cardBackground },
           ]}
           onPress={() => onPeriodTypeChange('yearly')}
         >
           <Text
             style={[
               styles.toggleText,
-              periodType === 'yearly' && styles.activeToggleText,
+              { color: theme.colors.textSecondary },
+              periodType === 'yearly' && { color: theme.colors.text, fontWeight: '600' },
             ]}
           >
             연도별
@@ -60,11 +65,11 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
       </View>
       <View style={styles.navContainer}>
         <TouchableOpacity onPress={onPrev} style={styles.navButton}>
-          <Text style={styles.navText}>◀</Text>
+          <Text style={[styles.navText, { color: theme.colors.textSecondary }]}>◀</Text>
         </TouchableOpacity>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>
         <TouchableOpacity onPress={onNext} style={styles.navButton}>
-          <Text style={styles.navText}>▶</Text>
+          <Text style={[styles.navText, { color: theme.colors.textSecondary }]}>▶</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -74,7 +79,6 @@ const PeriodSelector: React.FC<PeriodSelectorProps> = ({
 const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
     padding: 4,
     marginHorizontal: 16,
@@ -86,16 +90,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 6,
   },
-  activeToggle: {
-    backgroundColor: '#fff',
-  },
   toggleText: {
     fontSize: 14,
-    color: '#666',
-  },
-  activeToggleText: {
-    color: '#000',
-    fontWeight: '600',
   },
   navContainer: {
     flexDirection: 'row',
@@ -109,12 +105,10 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 16,
-    color: '#666',
   },
   label: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
 });
 

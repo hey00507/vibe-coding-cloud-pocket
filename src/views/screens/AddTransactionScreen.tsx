@@ -26,10 +26,12 @@ import {
   subCategoryService,
 } from '../../services/ServiceRegistry';
 import DateSelector from '../components/DateSelector';
+import { useTheme } from '../../controllers/useTheme';
 
 export default function AddTransactionScreen({
   navigation,
 }: AddTransactionScreenProps) {
+  const { theme } = useTheme();
   const [type, setType] = useState<TransactionType>('expense');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [amount, setAmount] = useState('');
@@ -167,7 +169,7 @@ export default function AddTransactionScreen({
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.surface }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -175,13 +177,15 @@ export default function AddTransactionScreen({
           <TouchableOpacity
             style={[
               styles.typeButton,
-              type === 'expense' && styles.expenseButtonActive,
+              { backgroundColor: theme.colors.border },
+              type === 'expense' && { backgroundColor: theme.colors.expense },
             ]}
             onPress={() => handleTypeChange('expense')}
           >
             <Text
               style={[
                 styles.typeText,
+                { color: theme.colors.textSecondary },
                 type === 'expense' && styles.typeTextActive,
               ]}
             >
@@ -191,13 +195,15 @@ export default function AddTransactionScreen({
           <TouchableOpacity
             style={[
               styles.typeButton,
-              type === 'income' && styles.incomeButtonActive,
+              { backgroundColor: theme.colors.border },
+              type === 'income' && { backgroundColor: theme.colors.income },
             ]}
             onPress={() => handleTypeChange('income')}
           >
             <Text
               style={[
                 styles.typeText,
+                { color: theme.colors.textSecondary },
                 type === 'income' && styles.typeTextActive,
               ]}
             >
@@ -212,24 +218,24 @@ export default function AddTransactionScreen({
         />
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>금액</Text>
-          <View style={styles.amountContainer}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>금액</Text>
+          <View style={[styles.amountContainer, { backgroundColor: theme.colors.cardBackground }]}>
             <TextInput
-              style={styles.amountInput}
+              style={[styles.amountInput, { color: theme.colors.text }]}
               value={amount}
               onChangeText={(text) => setAmount(formatAmount(text))}
               keyboardType="numeric"
               placeholder="0"
-              placeholderTextColor="#999"
+              placeholderTextColor={theme.colors.textTertiary}
             />
-            <Text style={styles.currency}>원</Text>
+            <Text style={[styles.currency, { color: theme.colors.textSecondary }]}>원</Text>
           </View>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>카테고리</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>카테고리</Text>
           {categories.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>
               카테고리가 없습니다. 먼저 카테고리를 추가해주세요.
             </Text>
           ) : (
@@ -239,13 +245,15 @@ export default function AddTransactionScreen({
                   key={cat.id}
                   style={[
                     styles.optionButton,
-                    selectedCategoryId === cat.id && styles.optionButtonActive,
+                    { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+                    selectedCategoryId === cat.id && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => handleCategorySelect(cat.id)}
                 >
                   <Text
                     style={[
                       styles.optionText,
+                      { color: theme.colors.text },
                       selectedCategoryId === cat.id && styles.optionTextActive,
                     ]}
                   >
@@ -261,20 +269,22 @@ export default function AddTransactionScreen({
         {/* 소분류 선택 (지출일 때만, 소분류가 있을 때만) */}
         {type === 'expense' && subCategories.length > 0 && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>소분류</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>소분류</Text>
             <View style={styles.optionsContainer}>
               {subCategories.map((sub) => (
                 <TouchableOpacity
                   key={sub.id}
                   style={[
                     styles.optionButton,
-                    selectedSubCategoryId === sub.id && styles.optionButtonActive,
+                    { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+                    selectedSubCategoryId === sub.id && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => setSelectedSubCategoryId(sub.id)}
                 >
                   <Text
                     style={[
                       styles.optionText,
+                      { color: theme.colors.text },
                       selectedSubCategoryId === sub.id && styles.optionTextActive,
                     ]}
                   >
@@ -288,9 +298,9 @@ export default function AddTransactionScreen({
         )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>결제수단</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>결제수단</Text>
           {paymentMethods.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: theme.colors.textTertiary }]}>
               결제수단이 없습니다. 먼저 결제수단을 추가해주세요.
             </Text>
           ) : (
@@ -300,14 +310,15 @@ export default function AddTransactionScreen({
                   key={method.id}
                   style={[
                     styles.optionButton,
-                    selectedPaymentMethodId === method.id &&
-                      styles.optionButtonActive,
+                    { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+                    selectedPaymentMethodId === method.id && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
                   ]}
                   onPress={() => setSelectedPaymentMethodId(method.id)}
                 >
                   <Text
                     style={[
                       styles.optionText,
+                      { color: theme.colors.text },
                       selectedPaymentMethodId === method.id &&
                         styles.optionTextActive,
                     ]}
@@ -322,13 +333,13 @@ export default function AddTransactionScreen({
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>메모 (선택)</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>메모 (선택)</Text>
           <TextInput
-            style={styles.memoInput}
+            style={[styles.memoInput, { backgroundColor: theme.colors.cardBackground, color: theme.colors.text }]}
             value={memo}
             onChangeText={setMemo}
             placeholder="메모를 입력하세요"
-            placeholderTextColor="#999"
+            placeholderTextColor={theme.colors.textTertiary}
             multiline
           />
         </View>
@@ -336,9 +347,7 @@ export default function AddTransactionScreen({
         <TouchableOpacity
           style={[
             styles.submitButton,
-            type === 'expense'
-              ? styles.expenseButtonActive
-              : styles.incomeButtonActive,
+            { backgroundColor: type === 'expense' ? theme.colors.expense : theme.colors.income },
           ]}
           onPress={handleSubmit}
         >
@@ -354,7 +363,6 @@ export default function AddTransactionScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   scrollContent: {
     padding: 16,
@@ -368,19 +376,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#E0E0E0',
     alignItems: 'center',
-  },
-  expenseButtonActive: {
-    backgroundColor: '#F44336',
-  },
-  incomeButtonActive: {
-    backgroundColor: '#4CAF50',
   },
   typeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
   },
   typeTextActive: {
     color: '#FFF',
@@ -391,13 +391,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
   },
   amountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     paddingHorizontal: 16,
   },
@@ -406,11 +404,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     paddingVertical: 16,
-    color: '#333',
   },
   currency: {
     fontSize: 18,
-    color: '#666',
   },
   optionsContainer: {
     flexDirection: 'row',
@@ -421,28 +417,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  optionButtonActive: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
   },
   optionText: {
     fontSize: 14,
-    color: '#333',
   },
   optionTextActive: {
     color: '#FFF',
   },
   emptyText: {
     fontSize: 14,
-    color: '#999',
     fontStyle: 'italic',
   },
   memoInput: {
-    backgroundColor: '#FFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,

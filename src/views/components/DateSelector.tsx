@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import DatePickerModal from './DatePickerModal';
+import { useTheme } from '../../controllers/useTheme';
 
 interface DateSelectorProps {
   selectedDate: Date;
@@ -13,6 +14,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   selectedDate,
   onDateChange,
 }) => {
+  const { theme } = useTheme();
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const today = new Date();
@@ -52,35 +54,56 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>날짜</Text>
+      <Text style={[styles.label, { color: theme.colors.text }]}>날짜</Text>
 
       <View style={styles.buttonsRow}>
         <TouchableOpacity
-          style={[styles.button, isToday && styles.buttonActive]}
+          style={[
+            styles.button,
+            { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+            isToday && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+          ]}
           onPress={handleToday}
         >
-          <Text style={[styles.buttonText, isToday && styles.buttonTextActive]}>
+          <Text style={[
+            styles.buttonText,
+            { color: theme.colors.text },
+            isToday && { color: theme.colors.cardBackground },
+          ]}>
             오늘
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.button, isYesterday && styles.buttonActive]}
+          style={[
+            styles.button,
+            { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+            isYesterday && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+          ]}
           onPress={handleYesterday}
         >
-          <Text style={[styles.buttonText, isYesterday && styles.buttonTextActive]}>
+          <Text style={[
+            styles.buttonText,
+            { color: theme.colors.text },
+            isYesterday && { color: theme.colors.cardBackground },
+          ]}>
             어제
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.button, !isToday && !isYesterday && styles.buttonActive]}
+          style={[
+            styles.button,
+            { backgroundColor: theme.colors.cardBackground, borderColor: theme.colors.border },
+            !isToday && !isYesterday && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+          ]}
           onPress={() => setPickerVisible(true)}
         >
           <Text
             style={[
               styles.buttonText,
-              !isToday && !isYesterday && styles.buttonTextActive,
+              { color: theme.colors.text },
+              !isToday && !isYesterday && { color: theme.colors.cardBackground },
             ]}
           >
             직접 선택
@@ -88,7 +111,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.dateDisplay}>{formatDate(selectedDate)}</Text>
+      <Text style={[styles.dateDisplay, { color: theme.colors.text }]}>{formatDate(selectedDate)}</Text>
 
       <DatePickerModal
         visible={pickerVisible}
@@ -107,7 +130,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
   },
   buttonsRow: {
@@ -119,24 +141,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  buttonActive: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
   },
   buttonText: {
     fontSize: 14,
-    color: '#333',
-  },
-  buttonTextActive: {
-    color: '#FFF',
   },
   dateDisplay: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '500',
   },
 });

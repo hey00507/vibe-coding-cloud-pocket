@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '../test-utils';
 import { Alert } from 'react-native';
 import AddTransactionScreen from '../../src/views/screens/AddTransactionScreen';
 import {

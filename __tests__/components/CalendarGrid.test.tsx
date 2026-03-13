@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '../test-utils';
 import CalendarGrid from '../../src/views/components/CalendarGrid';
 import { DailySummary } from '../../src/types';
 

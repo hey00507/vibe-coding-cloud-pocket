@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../controllers/useTheme';
 
 interface CalendarHeaderProps {
   year: number;
@@ -14,16 +15,18 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   onPrevMonth,
   onNextMonth,
 }) => {
+  const { theme } = useTheme();
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onPrevMonth} style={styles.navButton}>
-        <Text style={styles.navText}>◀</Text>
+        <Text style={[styles.navText, { color: theme.colors.textSecondary }]}>◀</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>
         {year}년 {month}월
       </Text>
       <TouchableOpacity onPress={onNextMonth} style={styles.navButton}>
-        <Text style={styles.navText}>▶</Text>
+        <Text style={[styles.navText, { color: theme.colors.textSecondary }]}>▶</Text>
       </TouchableOpacity>
     </View>
   );
@@ -42,12 +45,10 @@ const styles = StyleSheet.create({
   },
   navText: {
     fontSize: 16,
-    color: '#666',
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
 });
 
