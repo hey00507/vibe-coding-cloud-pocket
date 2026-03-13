@@ -1,14 +1,18 @@
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react-native';
+import { ThemeProvider } from '../src/controllers/ThemeContext';
 
-// 커스텀 Provider 래퍼 (필요 시 ThemeProvider 등 추가)
+// 커스텀 Provider 래퍼
 interface WrapperProps {
   children: React.ReactNode;
 }
 
 const AllTheProviders = ({ children }: WrapperProps) => {
-  // 추후 ThemeProvider, NavigationContainer 등 래핑
-  return <>{children}</>;
+  return (
+    <ThemeProvider initialMode="light">
+      {children}
+    </ThemeProvider>
+  );
 };
 
 // 커스텀 렌더 함수

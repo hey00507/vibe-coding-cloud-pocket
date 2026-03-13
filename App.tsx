@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { RootTabParamList } from './src/types/navigation';
 
 import HomeScreen from './src/views/screens/HomeScreen';
 import AddTransactionScreen from './src/views/screens/AddTransactionScreen';
 import StatisticsScreen from './src/views/screens/StatisticsScreen';
 import SettingsScreen from './src/views/screens/SettingsScreen';
+import { initializeApp } from './src/services/AppInitializer';
+import { ThemeProvider } from './src/controllers/ThemeContext';
+import { useTheme } from './src/controllers/useTheme';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -16,21 +19,55 @@ const TabIcon = ({ label }: { label: string }) => (
   <Text style={{ fontSize: 20 }}>{label}</Text>
 );
 
-export default function App() {
+function AppContent() {
+  const { theme, isDark } = useTheme();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    initializeApp().then(() => setIsReady(true));
+  }, []);
+
+  if (!isReady) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          데이터 불러오는 중...
+        </Text>
+      </View>
+    );
+  }
+
+  const navigationTheme = {
+    ...DefaultTheme,
+    dark: isDark,
+    colors: {
+      ...DefaultTheme.colors,
+      primary: theme.colors.primary,
+      background: theme.colors.background,
+      card: theme.colors.cardBackground,
+      text: theme.colors.text,
+      border: theme.colors.border,
+      notification: theme.colors.primary,
+    },
+  };
+
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
+    <NavigationContainer theme={navigationTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#2196F3',
-          tabBarInactiveTintColor: '#999',
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
           tabBarStyle: {
+            backgroundColor: theme.colors.tabBarBackground,
+            borderTopColor: theme.colors.tabBarBorder,
             paddingBottom: 8,
             paddingTop: 8,
             height: 60,
           },
           headerStyle: {
-            backgroundColor: '#2196F3',
+            backgroundColor: theme.colors.primary,
           },
           headerTintColor: '#FFF',
           headerTitleStyle: {
@@ -78,3 +115,23 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+});

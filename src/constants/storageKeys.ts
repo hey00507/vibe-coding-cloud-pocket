@@ -14,4 +14,8 @@ export const STORAGE_KEYS = {
   BANK_ACCOUNTS: '@cloudpocket/bankAccounts',
   BANK_ACCOUNTS_ID_COUNTER: '@cloudpocket/bankAccounts/idCounter',
   SEEDED: '@cloudpocket/seeded',
+  THEME_MODE: '@cloudpocket/themeMode',
+  GOOGLE_AUTH_TOKENS: '@cloudpocket/googleAuthTokens',
+  LAST_SYNC: '@cloudpocket/lastSync',
+  SPREADSHEET_ID: '@cloudpocket/spreadsheetId',
 } as const;
