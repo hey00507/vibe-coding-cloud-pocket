@@ -5,10 +5,41 @@ import {
   BankTier,
 } from '../types';
 import { IBankAccountService } from './interfaces/IBankAccountService';
+import { IStorageService } from './interfaces/IStorageService';
 
 export class BankAccountService implements IBankAccountService {
   private accounts: Map<string, BankAccount> = new Map();
   private idCounter: number = 0;
+  private storageService: IStorageService | null = null;
+  private storageKey: string = '';
+  private idCounterKey: string = '';
+
+  async hydrate(
+    storageService: IStorageService,
+    storageKey: string,
+    idCounterKey: string
+  ): Promise<void> {
+    this.storageService = storageService;
+    this.storageKey = storageKey;
+    this.idCounterKey = idCounterKey;
+
+    const items = await storageService.load<BankAccount>(storageKey);
+    for (const item of items) {
+      this.accounts.set(item.id, item);
+    }
+
+    const counter = await storageService.loadValue<number>(idCounterKey);
+    if (counter !== null) {
+      this.idCounter = counter;
+    }
+  }
+
+  private persist(): void {
+    if (!this.storageService) return;
+    const items = Array.from(this.accounts.values());
+    this.storageService.save(this.storageKey, items);
+    this.storageService.saveValue(this.idCounterKey, this.idCounter);
+  }
 
   private generateId(): string {
     this.idCounter += 1;
@@ -26,6 +57,7 @@ export class BankAccountService implements IBankAccountService {
     };
 
     this.accounts.set(account.id, account);
+    this.persist();
     return account;
   }
 
@@ -62,15 +94,19 @@ export class BankAccountService implements IBankAccountService {
     };
 
     this.accounts.set(id, updated);
+    this.persist();
     return updated;
   }
 
   delete(id: string): boolean {
-    return this.accounts.delete(id);
+    const result = this.accounts.delete(id);
+    if (result) this.persist();
+    return result;
   }
 
   clear(): void {
     this.accounts.clear();
     this.idCounter = 0;
+    this.persist();
   }
 }

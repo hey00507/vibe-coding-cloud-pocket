@@ -1,6 +1,7 @@
 import { ICategoryService } from './interfaces/ICategoryService';
 import { ISubCategoryService } from './interfaces/ISubCategoryService';
 import { IPaymentMethodService } from './interfaces/IPaymentMethodService';
+import { IStorageService } from './interfaces/IStorageService';
 import {
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
@@ -13,6 +14,26 @@ import {
  */
 export class SeedService {
   private seeded: boolean = false;
+  private storageService: IStorageService | null = null;
+  private storageKey: string = '';
+
+  async hydrate(
+    storageService: IStorageService,
+    storageKey: string
+  ): Promise<void> {
+    this.storageService = storageService;
+    this.storageKey = storageKey;
+
+    const value = await storageService.loadValue<boolean>(storageKey);
+    if (value !== null) {
+      this.seeded = value;
+    }
+  }
+
+  private persistSeeded(): void {
+    if (!this.storageService) return;
+    this.storageService.saveValue(this.storageKey, this.seeded);
+  }
 
   isSeeded(): boolean {
     return this.seeded;
@@ -20,10 +41,12 @@ export class SeedService {
 
   markSeeded(): void {
     this.seeded = true;
+    this.persistSeeded();
   }
 
   resetSeeded(): void {
     this.seeded = false;
+    this.persistSeeded();
   }
 
   seedAll(
@@ -69,5 +92,6 @@ export class SeedService {
     }
 
     this.seeded = true;
+    this.persistSeeded();
   }
 }
