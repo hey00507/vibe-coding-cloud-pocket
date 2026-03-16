@@ -20,6 +20,7 @@ export class GoogleAuthService {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code: authCode,
+        client_id: GOOGLE_CONFIG.IOS_CLIENT_ID,
         grant_type: 'authorization_code',
         redirect_uri: 'cloudpocket://',
       }).toString(),
@@ -75,6 +76,7 @@ export class GoogleAuthService {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         refresh_token: this.tokens.refreshToken,
+        client_id: GOOGLE_CONFIG.IOS_CLIENT_ID,
         grant_type: 'refresh_token',
       }).toString(),
     });

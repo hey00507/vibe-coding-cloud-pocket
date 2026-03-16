@@ -353,7 +353,7 @@ describe('GoogleSheetsService', () => {
       );
 
       const pmWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('A11')
+        decodeURIComponent(url).includes('B11')
       );
       expect(pmWrite).toBeDefined();
 

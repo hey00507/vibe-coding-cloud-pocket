@@ -167,11 +167,11 @@ export const SHEET_NAMES = {
 // 셀 범위 (google-sheets-schema.md 기반)
 export const CELL_RANGES = {
   // 설정 시트
-  CATEGORIES: "'(필수)설정 시트'!D40:M50",
-  PAYMENT_METHODS: "'(필수)설정 시트'!A11:B21",
-  INCOME_CATEGORIES: "'(필수)설정 시트'!B24:B28",
+  CATEGORIES: "'(필수)설정 시트'!D40:M51",
+  PAYMENT_METHODS: "'(필수)설정 시트'!B11:C21",
+  INCOME_CATEGORIES: "'(필수)설정 시트'!B25:B29",
   SAVINGS_PRODUCTS: "'(필수)설정 시트'!D4:N16",
-  BANK_ACCOUNTS: "'(필수)설정 시트'!A21:F36",
+  BANK_ACCOUNTS: "'(필수)설정 시트'!B18:B21",
 
   // 월별 시트 (동적: month 파라미터)
   EXPENSE_TRANSACTIONS: (month: string) => `'${month}'!F6:K1000`,

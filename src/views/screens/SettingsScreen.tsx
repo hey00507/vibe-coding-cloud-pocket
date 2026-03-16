@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import {
   categoryService,
   paymentMethodService,
   subCategoryService,
+  googleAuthService,
+  googleSheetsService,
 } from '../../services/ServiceRegistry';
 import CategoryGroupItem from '../components/CategoryGroupItem';
 import BackupRestoreSection from '../components/BackupRestoreSection';
@@ -53,33 +55,81 @@ const THEME_OPTIONS: { label: string; value: ThemeMode; icon: string }[] = [
 export default function SettingsScreen() {
   const { theme, themeMode, setThemeMode } = useTheme();
 
-  // Google Sheets 백업 상태 (추후 GoogleAuthService/GoogleSheetsService 연결)
+  // Google Sheets 백업 상태
   const [gsIsSignedIn, setGsIsSignedIn] = useState(false);
   const [gsLastSync, setGsLastSync] = useState<Date | null>(null);
   const [gsSpreadsheetId, setGsSpreadsheetId] = useState('');
 
+  // 초기화: 저장된 인증/동기화 상태 복원
+  useEffect(() => {
+    const initGoogleSheets = async () => {
+      await googleAuthService.hydrate();
+      await googleSheetsService.initialize();
+      setGsIsSignedIn(googleAuthService.isSignedIn());
+      setGsLastSync(googleSheetsService.getLastSyncTime());
+      setGsSpreadsheetId(googleSheetsService.getSpreadsheetId() || '');
+    };
+    initGoogleSheets();
+  }, []);
+
   const handleGsSignIn = useCallback(async () => {
-    // TODO: GoogleAuthService.signIn() 연결
-    Alert.alert('알림', 'Google 로그인은 아직 구현 중입니다');
+    try {
+      const AuthSession = require('expo-auth-session');
+      const WebBrowser = require('expo-web-browser');
+      const { GOOGLE_CONFIG } = require('../../constants/googleSheets');
+
+      WebBrowser.maybeCompleteAuthSession();
+
+      const discovery = {
+        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenEndpoint: 'https://oauth2.googleapis.com/token',
+      };
+
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'cloudpocket' });
+
+      const authRequest = new AuthSession.AuthRequest({
+        clientId: GOOGLE_CONFIG.IOS_CLIENT_ID,
+        scopes: GOOGLE_CONFIG.SCOPES,
+        redirectUri,
+        responseType: AuthSession.ResponseType.Code,
+        usePKCE: true,
+      });
+
+      const result = await authRequest.promptAsync(discovery);
+
+      if (result.type === 'success' && result.params.code) {
+        await googleAuthService.signIn(result.params.code);
+        setGsIsSignedIn(true);
+      }
+    } catch (error) {
+      Alert.alert('로그인 실패', error instanceof Error ? error.message : '알 수 없는 오류');
+    }
   }, []);
 
   const handleGsSignOut = useCallback(async () => {
+    await googleAuthService.signOut();
     setGsIsSignedIn(false);
     setGsLastSync(null);
-    setGsSpreadsheetId('');
   }, []);
 
   const handleGsExport = useCallback(async (): Promise<SyncResult> => {
-    // TODO: GoogleSheetsService.exportAll() 연결
-    return { status: 'error', message: '아직 구현 중입니다', timestamp: new Date() };
+    const result = await googleSheetsService.exportAll();
+    if (result.status === 'success') {
+      setGsLastSync(googleSheetsService.getLastSyncTime());
+    }
+    return result;
   }, []);
 
   const handleGsImport = useCallback(async (): Promise<SyncResult> => {
-    // TODO: GoogleSheetsService.importAll() 연결
-    return { status: 'error', message: '아직 구현 중입니다', timestamp: new Date() };
+    const result = await googleSheetsService.importAll();
+    if (result.status === 'success') {
+      setGsLastSync(googleSheetsService.getLastSyncTime());
+    }
+    return result;
   }, []);
 
   const handleGsSpreadsheetIdChange = useCallback(async (id: string) => {
+    await googleSheetsService.setSpreadsheetId(id);
     setGsSpreadsheetId(id);
   }, []);
 
