@@ -278,7 +278,7 @@ describe('GoogleSheetsService', () => {
       );
       // 수입 PUT 호출에서 합산 확인
       const incomeWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('B15')
+        decodeURIComponent(url).includes('C14')
       );
       expect(incomeWrite).toBeDefined();
 

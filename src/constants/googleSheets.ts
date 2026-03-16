@@ -33,8 +33,8 @@ export const CELL_RANGES = {
   BANK_ACCOUNTS_2: "'(필수)설정 시트'!A28:F29",   // 2금융권 계좌
   CASH: "'(필수)설정 시트'!C14:C16",              // 현금 결제수단
 
-  // 월별 시트 (동적: month 파라미터)
-  EXPENSE_TRANSACTIONS: (month: string) => `'${month}'!F6:K1000`,
-  INCOME_DETAILS: (month: string) => `'${month}'!B15:D19`,
-  SAVINGS_DETAILS: (month: string) => `'${month}'!B22:D33`,
+  // 월별 시트 (동적: month 파라미터) — 네이티브 Google Sheets 기준
+  EXPENSE_TRANSACTIONS: (month: string) => `'${month}'!G6:L1000`,
+  INCOME_DETAILS: (month: string) => `'${month}'!C14:E18`,
+  SAVINGS_DETAILS: (month: string) => `'${month}'!C22:E33`,
 } as const;
