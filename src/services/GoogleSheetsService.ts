@@ -196,19 +196,27 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         return [cat.name, ...subNames] as (string | number | null)[];
       });
 
-      // 결제수단 변환: 각 행 = [이름, 타입]
-      const paymentMethodRows = paymentMethods.map(
-        (pm) => [pm.name, pm.type || ''] as (string | number | null)[]
-      );
+      // 결제수단 변환: B열=신용카드, C열=체크카드/현금 (열별 그룹)
+      const creditCards = paymentMethods
+        .filter((pm) => pm.type === 'credit')
+        .map((pm) => [pm.name] as (string | number | null)[]);
+      const debitAndCash = paymentMethods
+        .filter((pm) => pm.type !== 'credit')
+        .map((pm) => [pm.name] as (string | number | null)[]);
 
       await this.clearRange(CELL_RANGES.CATEGORIES);
       if (categoryMatrix.length > 0) {
         await this.writeRange(CELL_RANGES.CATEGORIES, categoryMatrix);
       }
 
-      await this.clearRange(CELL_RANGES.PAYMENT_METHODS);
-      if (paymentMethodRows.length > 0) {
-        await this.writeRange(CELL_RANGES.PAYMENT_METHODS, paymentMethodRows);
+      await this.clearRange(CELL_RANGES.PAYMENT_CREDIT);
+      if (creditCards.length > 0) {
+        await this.writeRange(CELL_RANGES.PAYMENT_CREDIT, creditCards);
+      }
+
+      await this.clearRange(CELL_RANGES.PAYMENT_DEBIT);
+      if (debitAndCash.length > 0) {
+        await this.writeRange(CELL_RANGES.PAYMENT_DEBIT, debitAndCash);
       }
 
       await this.updateLastSyncTime();
@@ -381,29 +389,42 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         }
       }
 
-      // 결제수단 읽기
-      const paymentMethodRows = await this.readRange(
-        CELL_RANGES.PAYMENT_METHODS
-      );
-
+      // 결제수단 읽기: B열=신용, C열=체크/현금 (열별 그룹)
       let paymentMethodsImported = 0;
 
-      for (const row of paymentMethodRows) {
-        if (!row || row.length === 0 || !row[0]) continue;
-
+      const creditRows = await this.readRange(CELL_RANGES.PAYMENT_CREDIT);
+      for (const row of creditRows) {
+        if (!row || !row[0]) continue;
         const name = String(row[0]);
-        const type = row[1] ? String(row[1]) : undefined;
-
         const existing = this.deps.paymentMethodService
           .getAll()
           .find((pm: PaymentMethod) => pm.name === name);
-
         if (!existing) {
-          this.deps.paymentMethodService.create({
-            name,
-            type: type as 'credit' | 'debit' | 'cash' | 'account' | undefined,
-          });
+          this.deps.paymentMethodService.create({ name, type: 'credit' });
           paymentMethodsImported++;
+        }
+      }
+
+      const debitRows = await this.readRange(CELL_RANGES.PAYMENT_DEBIT);
+      for (const row of debitRows) {
+        if (!row || !row[0]) continue;
+        const name = String(row[0]);
+        if (name === '현금') {
+          const existing = this.deps.paymentMethodService
+            .getAll()
+            .find((pm: PaymentMethod) => pm.name === name);
+          if (!existing) {
+            this.deps.paymentMethodService.create({ name, type: 'cash' });
+            paymentMethodsImported++;
+          }
+        } else {
+          const existing = this.deps.paymentMethodService
+            .getAll()
+            .find((pm: PaymentMethod) => pm.name === name);
+          if (!existing) {
+            this.deps.paymentMethodService.create({ name, type: 'debit' });
+            paymentMethodsImported++;
+          }
         }
       }
 

@@ -325,7 +325,7 @@ describe('GoogleSheetsService', () => {
       expect(putCalls.length).toBeGreaterThanOrEqual(1);
 
       const categoryWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('D40')
+        decodeURIComponent(url).includes('D38')
       );
       expect(categoryWrite).toBeDefined();
 
@@ -352,16 +352,21 @@ describe('GoogleSheetsService', () => {
         ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
       );
 
-      const pmWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('B11')
+      // 신용카드는 PAYMENT_CREDIT 범위에 기록
+      const creditWrite = putCalls.find(([url]: [string]) =>
+        decodeURIComponent(url).includes('B12')
       );
-      expect(pmWrite).toBeDefined();
+      expect(creditWrite).toBeDefined();
+      const creditBody = JSON.parse((creditWrite![1] as RequestInit).body as string);
+      expect(creditBody.values).toEqual([['신한카드']]);
 
-      const body = JSON.parse((pmWrite![1] as RequestInit).body as string);
-      expect(body.values).toEqual([
-        ['신한카드', 'credit'],
-        ['현금', 'cash'],
-      ]);
+      // 현금은 PAYMENT_DEBIT 범위에 기록
+      const debitWrite = putCalls.find(([url]: [string]) =>
+        decodeURIComponent(url).includes('C12')
+      );
+      expect(debitWrite).toBeDefined();
+      const debitBody = JSON.parse((debitWrite![1] as RequestInit).body as string);
+      expect(debitBody.values).toEqual([['현금']]);
     });
 
     it('exportAll - 인증 없으면 에러', async () => {
@@ -529,9 +534,10 @@ describe('GoogleSheetsService', () => {
         ...input,
       }));
 
-      // First call: categories, second: payment methods
+      // categories, then credit cards, then debit/cash
       mockFetch
         .mockResolvedValueOnce(createSuccessResponse(categoryData))
+        .mockResolvedValueOnce(createSuccessResponse({ values: [] }))
         .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
 
       const result = await service.importSettings();
@@ -554,13 +560,9 @@ describe('GoogleSheetsService', () => {
       });
     });
 
-    it('importSettings - 결제수단 파싱', async () => {
-      const paymentMethodData = {
-        values: [
-          ['신한카드', 'credit'],
-          ['현금', 'cash'],
-        ],
-      };
+    it('importSettings - 결제수단 파싱 (열별 그룹)', async () => {
+      const creditData = { values: [['신한카드']] };
+      const debitData = { values: [['현대카드'], ['현금']] };
 
       mockCategoryService.getByType.mockReturnValue([]);
       mockPaymentMethodService.getAll.mockReturnValue([]);
@@ -569,18 +571,23 @@ describe('GoogleSheetsService', () => {
         ...input,
       }));
 
-      // First call: categories (empty), second: payment methods
+      // categories (empty), then credit, then debit
       mockFetch
         .mockResolvedValueOnce(createSuccessResponse({ values: [] }))
-        .mockResolvedValueOnce(createSuccessResponse(paymentMethodData));
+        .mockResolvedValueOnce(createSuccessResponse(creditData))
+        .mockResolvedValueOnce(createSuccessResponse(debitData));
 
       const result = await service.importSettings();
 
       expect(result.status).toBe('success');
-      expect(mockPaymentMethodService.create).toHaveBeenCalledTimes(2);
+      expect(mockPaymentMethodService.create).toHaveBeenCalledTimes(3);
       expect(mockPaymentMethodService.create).toHaveBeenCalledWith({
         name: '신한카드',
         type: 'credit',
+      });
+      expect(mockPaymentMethodService.create).toHaveBeenCalledWith({
+        name: '현대카드',
+        type: 'debit',
       });
       expect(mockPaymentMethodService.create).toHaveBeenCalledWith({
         name: '현금',

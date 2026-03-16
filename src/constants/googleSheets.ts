@@ -20,14 +20,18 @@ export const SHEET_NAMES = {
   MONTHS: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
 } as const;
 
-// 셀 범위 (실제 스프레드시트 검증 기준 2026-03-16)
+// 셀 범위 (실제 스프레드시트 구조 매핑 2026-03-16)
 export const CELL_RANGES = {
   // 설정 시트
-  CATEGORIES: "'(필수)설정 시트'!D40:M51",
-  PAYMENT_METHODS: "'(필수)설정 시트'!B11:C21",
-  INCOME_CATEGORIES: "'(필수)설정 시트'!B25:B29",
-  SAVINGS_PRODUCTS: "'(필수)설정 시트'!D4:N16",
-  BANK_ACCOUNTS: "'(필수)설정 시트'!B18:B21",
+  CATEGORIES: "'(필수)설정 시트'!D38:M48",       // 대분류 10개 + 소분류 (행 38~48)
+  PAYMENT_CREDIT: "'(필수)설정 시트'!B12:B16",    // 신용카드 목록 (B열, 헤더 B11="신용")
+  PAYMENT_DEBIT: "'(필수)설정 시트'!C12:C16",     // 체크카드 목록 (C열, 헤더 C11="체크")
+  PAYMENT_HEADERS: "'(필수)설정 시트'!B11:C11",   // 결제수단 헤더 ("신용", "체크")
+  INCOME_CATEGORIES: "'(필수)설정 시트'!B30:B36",  // 수입분류 (월급~연금)
+  SAVINGS_PRODUCTS: "'(필수)설정 시트'!D3:N9",     // 저축상품 (헤더 포함)
+  BANK_ACCOUNTS_1: "'(필수)설정 시트'!A20:F27",   // 1금융권 계좌
+  BANK_ACCOUNTS_2: "'(필수)설정 시트'!A28:F29",   // 2금융권 계좌
+  CASH: "'(필수)설정 시트'!C14:C16",              // 현금 결제수단
 
   // 월별 시트 (동적: month 파라미터)
   EXPENSE_TRANSACTIONS: (month: string) => `'${month}'!F6:K1000`,
