@@ -84,11 +84,11 @@ describe('GroupedBarChart', () => {
     it('should use default colors', () => {
       render(<GroupedBarChart data={sampleData} />);
       const incomeBar = screen.getByTestId('bar-income-0');
-      expect(incomeBar.props.fill).toBe('#4CAF50');
+      expect(incomeBar.props.fill).toBe('#2E9E5A');
       const savingsBar = screen.getByTestId('bar-savings-0');
-      expect(savingsBar.props.fill).toBe('#2196F3');
+      expect(savingsBar.props.fill).toBe('#2B4C7E');
       const expenseBar = screen.getByTestId('bar-expense-0');
-      expect(expenseBar.props.fill).toBe('#F44336');
+      expect(expenseBar.props.fill).toBe('#D94452');
     });
 
     it('should use custom colors when provided', () => {

@@ -124,11 +124,11 @@ describe('DayCell', () => {
       const tree = toJSON();
       // selectedCell 스타일이 적용되어야 함
       expect(tree).toBeTruthy();
-      // 컴포넌트가 렌더링되면 스타일에 backgroundColor: '#BBDEFB'가 포함
+      // 컴포넌트가 렌더링되면 스타일에 backgroundColor: '#D6E0F0'가 포함
       const flatStyles = (tree as any).props.style;
       const hasSelectedBg = flatStyles.some
-        ? flatStyles.some((s: any) => s?.backgroundColor === '#BBDEFB')
-        : flatStyles?.backgroundColor === '#BBDEFB';
+        ? flatStyles.some((s: any) => s?.backgroundColor === '#D6E0F0')
+        : flatStyles?.backgroundColor === '#D6E0F0';
       expect(hasSelectedBg).toBe(true);
     });
 
@@ -145,8 +145,8 @@ describe('DayCell', () => {
       const tree = toJSON();
       const flatStyles = (tree as any).props.style;
       const hasSelectedBg = flatStyles.some
-        ? flatStyles.some((s: any) => s?.backgroundColor === '#BBDEFB')
-        : flatStyles?.backgroundColor === '#BBDEFB';
+        ? flatStyles.some((s: any) => s?.backgroundColor === '#D6E0F0')
+        : flatStyles?.backgroundColor === '#D6E0F0';
       expect(hasSelectedBg).toBe(false);
     });
   });
