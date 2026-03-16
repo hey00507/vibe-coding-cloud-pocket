@@ -8,6 +8,12 @@ import {
   subCategoryService,
 } from '../../src/services/ServiceRegistry';
 
+jest.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: jest.fn(),
+  openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
+}));
+
+
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 

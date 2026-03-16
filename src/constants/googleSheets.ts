@@ -1,8 +1,9 @@
 // Google OAuth 설정
 export const GOOGLE_CONFIG = {
-  // Google Cloud Console에서 발급받은 iOS Client ID
-  // 실제 값은 환경별로 설정 필요
-  IOS_CLIENT_ID: '203155895927-bj67eb4prrdip0lvqmr9mrgv05cvh4rc.apps.googleusercontent.com',
+  // Expo Go 테스트용 (웹 애플리케이션 타입)
+  WEB_CLIENT_ID: '585276003820-f87um3808k8im307c44oletkk3skdh8s.apps.googleusercontent.com',
+  // EAS Build 배포용 (iOS 타입)
+  IOS_CLIENT_ID: '585276003820-snqbt696bpmru9fld6bi5n2fenainbrr.apps.googleusercontent.com',
   SCOPES: ['https://www.googleapis.com/auth/spreadsheets'],
   TOKEN_ENDPOINT: 'https://oauth2.googleapis.com/token',
 } as const;

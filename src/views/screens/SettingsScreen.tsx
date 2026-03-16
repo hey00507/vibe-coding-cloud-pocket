@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import { GOOGLE_CONFIG } from '../../constants/googleSheets';
 import {
   View,
   Text,
@@ -52,6 +54,11 @@ const THEME_OPTIONS: { label: string; value: ThemeMode; icon: string }[] = [
   { label: '시스템', value: 'system', icon: '📱' },
 ];
 
+WebBrowser.maybeCompleteAuthSession();
+
+// iOS client ID의 reversed scheme → Google이 여기로 redirect
+const IOS_REDIRECT_URI = `com.googleusercontent.apps.${GOOGLE_CONFIG.IOS_CLIENT_ID.split('.apps.')[0]}:/oauthredirect`;
+
 export default function SettingsScreen() {
   const { theme, themeMode, setThemeMode } = useTheme();
 
@@ -74,32 +81,27 @@ export default function SettingsScreen() {
 
   const handleGsSignIn = useCallback(async () => {
     try {
-      const AuthSession = require('expo-auth-session');
-      const WebBrowser = require('expo-web-browser');
-      const { GOOGLE_CONFIG } = require('../../constants/googleSheets');
+      const authUrl =
+        'https://accounts.google.com/o/oauth2/v2/auth' +
+        `?client_id=${GOOGLE_CONFIG.IOS_CLIENT_ID}` +
+        `&redirect_uri=${encodeURIComponent(IOS_REDIRECT_URI)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(GOOGLE_CONFIG.SCOPES.join(' '))}` +
+        `&access_type=offline`;
 
-      WebBrowser.maybeCompleteAuthSession();
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, IOS_REDIRECT_URI);
 
-      const discovery = {
-        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-        tokenEndpoint: 'https://oauth2.googleapis.com/token',
-      };
+      if (result.type === 'success' && result.url) {
+        const urlParts = result.url.split('?');
+        const params = new URLSearchParams(urlParts[1] || '');
+        const code = params.get('code');
 
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'cloudpocket' });
-
-      const authRequest = new AuthSession.AuthRequest({
-        clientId: GOOGLE_CONFIG.IOS_CLIENT_ID,
-        scopes: GOOGLE_CONFIG.SCOPES,
-        redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-        usePKCE: true,
-      });
-
-      const result = await authRequest.promptAsync(discovery);
-
-      if (result.type === 'success' && result.params.code) {
-        await googleAuthService.signIn(result.params.code);
-        setGsIsSignedIn(true);
+        if (code) {
+          await googleAuthService.signInWithIOS(code, IOS_REDIRECT_URI);
+          setGsIsSignedIn(true);
+        } else {
+          Alert.alert('로그인 실패', '인증 코드를 받지 못했습니다');
+        }
       }
     } catch (error) {
       Alert.alert('로그인 실패', error instanceof Error ? error.message : '알 수 없는 오류');

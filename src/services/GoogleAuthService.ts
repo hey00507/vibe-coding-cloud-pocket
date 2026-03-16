@@ -20,9 +20,9 @@ export class GoogleAuthService {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code: authCode,
-        client_id: GOOGLE_CONFIG.IOS_CLIENT_ID,
+        client_id: GOOGLE_CONFIG.WEB_CLIENT_ID,
         grant_type: 'authorization_code',
-        redirect_uri: 'cloudpocket://',
+        redirect_uri: 'https://auth.expo.io/@ethan-kim9/cloudpocket',
       }).toString(),
     });
 
@@ -40,6 +40,40 @@ export class GoogleAuthService {
     this.tokens = tokens;
     await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_AUTH_TOKENS, JSON.stringify(tokens));
     return tokens;
+  }
+
+  async signInWithIOS(authCode: string, redirectUri: string): Promise<GoogleAuthTokens> {
+    const response = await fetch(GOOGLE_CONFIG.TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: authCode,
+        client_id: GOOGLE_CONFIG.IOS_CLIENT_ID,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error_description || 'Failed to sign in with Google');
+    }
+
+    const data = await response.json();
+    const tokens: GoogleAuthTokens = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || '',
+      expiresAt: Date.now() + data.expires_in * 1000,
+    };
+
+    this.tokens = tokens;
+    await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_AUTH_TOKENS, JSON.stringify(tokens));
+    return tokens;
+  }
+
+  async setTokens(tokens: GoogleAuthTokens): Promise<void> {
+    this.tokens = tokens;
+    await AsyncStorage.setItem(STORAGE_KEYS.GOOGLE_AUTH_TOKENS, JSON.stringify(tokens));
   }
 
   async signOut(): Promise<void> {
