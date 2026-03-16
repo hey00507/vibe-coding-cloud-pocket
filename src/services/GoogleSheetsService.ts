@@ -97,13 +97,23 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       // 설정 내보내기
       await this.exportSettings();
 
-      // 현재 월 거래 내보내기
+      // 전체 12개월 거래 내보내기
       const now = new Date();
-      await this.exportTransactions(now.getFullYear(), now.getMonth() + 1);
+      const year = now.getFullYear();
+      let totalExported = 0;
+
+      for (let month = 1; month <= 12; month++) {
+        const result = await this.exportTransactions(year, month);
+        if (result.details?.transactions) {
+          totalExported += result.details.transactions;
+        }
+      }
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', '전체 내보내기 완료');
+      return this.createSyncResult('success', `전체 내보내기 완료 (${totalExported}건)`, {
+        transactions: totalExported,
+      });
     } catch (error) {
       return this.createSyncResult(
         'error',
@@ -246,13 +256,23 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       // 설정 먼저 가져오기
       await this.importSettings();
 
-      // 현재 월 거래 가져오기
+      // 전체 12개월 거래 가져오기
       const now = new Date();
-      await this.importTransactions(now.getFullYear(), now.getMonth() + 1);
+      const year = now.getFullYear();
+      let totalImported = 0;
+
+      for (let month = 1; month <= 12; month++) {
+        const result = await this.importTransactions(year, month);
+        if (result.details?.transactions) {
+          totalImported += result.details.transactions;
+        }
+      }
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', '전체 가져오기 완료');
+      return this.createSyncResult('success', `전체 가져오기 완료 (${totalImported}건)`, {
+        transactions: totalImported,
+      });
     } catch (error) {
       return this.createSyncResult(
         'error',
