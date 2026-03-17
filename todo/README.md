@@ -44,8 +44,8 @@
 | Phase 2 | ✅ 완료 | AsyncStorage 영속화 (전 서비스) | 포함 |
 | Phase 3 | ✅ 완료 | Google Sheets 연동 (GCP + OAuth + 실기기 검증) | 포함 |
 | MS1 | ✅ 완료 | 예산 기능 (카테고리별 월 예산 + 소진률) | 705개 통과 |
-| **MS2** | ⏳ 다음 | 자동 동기화 (앱 시작/백그라운드) | - |
-| MS3 | 대기 | Xcode 빌드 + AltStore 배포 | - |
+| MS2 | ✅ 완료 | 자동 동기화 (앱 시작 + 포그라운드 복귀) | 717개 통과 |
+| **MS3** | ⏳ 다음 | Xcode 빌드 + AltStore 배포 | - |
 | MS4 | 대기 | iOS 위젯 (WidgetKit, Swift) | - |
 | MS5 | 대기 | 수입/저축/자산 관리 UI | - |
 | MS6 | 대기 | 연도 전환 자동화 + 추가 위젯 | - |
@@ -70,10 +70,8 @@
 - 30+ 색상 토큰, 4개 화면 + 18개 컴포넌트 적용
 - CalendarGrid 완성
 
-### [Phase 3: Google Sheets 연동](./phase3-google-sheets.md)
-기존 Excel 템플릿 스프레드시트와 수동 백업/복원
-
-**현재 상태**: 코드 완료, GCP 설정 미완
+### Phase 3: Google Sheets 연동 ✅ 완료
+기존 Excel 템플릿 스프레드시트와 수동 백업/복원 + OAuth 실동작 완료
 
 ### [Phase 4: 템플릿 완전 활용](./phase4-template.md)
 서비스는 있지만 UI가 없는 기능들의 화면 구현 + 시각화 강화
@@ -92,8 +90,9 @@
 | BankAccountService | ✅ | ✅ | 🔴 UI 없음 |
 | IncomeTargetService | ✅ | ✅ | 🔴 UI 없음 |
 | BudgetService | ✅ | ✅ (100%) | ✅ |
-| GoogleAuthService | ✅ | ✅ | 🔴 placeholder |
-| GoogleSheetsService | ✅ | ✅ | 🔴 placeholder |
+| AutoSyncService | ✅ | ✅ | ✅ (App.tsx) |
+| GoogleAuthService | ✅ | ✅ | ✅ (Settings + AutoSync) |
+| GoogleSheetsService | ✅ | ✅ | ✅ (Settings + AutoSync) |
 | StorageService | ✅ | ✅ | ✅ |
 | AppInitializer | ✅ | ✅ | ✅ |
 
