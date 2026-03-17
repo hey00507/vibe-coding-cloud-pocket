@@ -214,25 +214,35 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         .filter((pm) => pm.type !== 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
 
-      // 카테고리가 비어있으면 시트를 지우지 않음 (데이터 보호)
+      // 카테고리가 비어있으면 시트를 건드리지 않음 (데이터 보호)
       if (categoryMatrix.length === 0) {
         return this.createSyncResult(
           'error',
           '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
         );
       }
-      await this.clearRange(CELL_RANGES.CATEGORIES);
-      await this.writeRange(CELL_RANGES.CATEGORIES, categoryMatrix);
 
-      await this.clearRange(CELL_RANGES.PAYMENT_CREDIT);
-      if (creditCards.length > 0) {
-        await this.writeRange(CELL_RANGES.PAYMENT_CREDIT, creditCards);
+      // clear 없이 write만 수행 (PUT은 범위를 덮어씀)
+      // 이전 데이터가 더 많은 행을 차지했을 경우를 위해 빈 행으로 패딩
+      const maxCategoryRows = 10; // E41:N50 = 10행
+      const paddedCategoryMatrix = [...categoryMatrix];
+      while (paddedCategoryMatrix.length < maxCategoryRows) {
+        paddedCategoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
       }
+      await this.writeRange(CELL_RANGES.CATEGORIES, paddedCategoryMatrix);
 
-      await this.clearRange(CELL_RANGES.PAYMENT_DEBIT);
-      if (debitAndCash.length > 0) {
-        await this.writeRange(CELL_RANGES.PAYMENT_DEBIT, debitAndCash);
+      const maxPaymentRows = 5; // B12:B16 / C12:C16 = 5행
+      const paddedCredit = [...creditCards];
+      while (paddedCredit.length < maxPaymentRows) {
+        paddedCredit.push(['']);
       }
+      await this.writeRange(CELL_RANGES.PAYMENT_CREDIT, paddedCredit);
+
+      const paddedDebit = [...debitAndCash];
+      while (paddedDebit.length < maxPaymentRows) {
+        paddedDebit.push(['']);
+      }
+      await this.writeRange(CELL_RANGES.PAYMENT_DEBIT, paddedDebit);
 
       await this.updateLastSyncTime();
 

@@ -360,7 +360,8 @@ describe('GoogleSheetsService', () => {
       );
       expect(creditWrite).toBeDefined();
       const creditBody = JSON.parse((creditWrite![1] as RequestInit).body as string);
-      expect(creditBody.values).toEqual([['신한카드']]);
+      expect(creditBody.values[0]).toEqual(['신한카드']);
+      expect(creditBody.values.length).toBe(5); // 패딩 포함
 
       // 현금은 PAYMENT_DEBIT 범위에 기록
       const debitWrite = putCalls.find(([url]: [string]) =>
@@ -368,7 +369,8 @@ describe('GoogleSheetsService', () => {
       );
       expect(debitWrite).toBeDefined();
       const debitBody = JSON.parse((debitWrite![1] as RequestInit).body as string);
-      expect(debitBody.values).toEqual([['현금']]);
+      expect(debitBody.values[0]).toEqual(['현금']);
+      expect(debitBody.values.length).toBe(5); // 패딩 포함
     });
 
     it('exportAll - 인증 없으면 에러', async () => {
