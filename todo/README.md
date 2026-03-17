@@ -45,9 +45,9 @@
 | Phase 3 | ✅ 완료 | Google Sheets 연동 (GCP + OAuth + 실기기 검증) | 포함 |
 | MS1 | ✅ 완료 | 예산 기능 (카테고리별 월 예산 + 소진률) | 705개 통과 |
 | MS2 | ✅ 완료 | 자동 동기화 (앱 시작 + 포그라운드 복귀) | 717개 통과 |
+| MS5 | ✅ 완료 | 수입/저축/자산 관리 UI | 717개 통과 |
 | **MS3** | ⏳ 다음 | Xcode 빌드 + AltStore 배포 | - |
 | MS4 | 대기 | iOS 위젯 (WidgetKit, Swift) | - |
-| MS5 | 대기 | 수입/저축/자산 관리 UI | - |
 | MS6 | 대기 | 연도 전환 자동화 + 추가 위젯 | - |
 
 ---
@@ -86,9 +86,9 @@
 | CategoryService | ✅ | ✅ | ✅ |
 | SubCategoryService | ✅ | ✅ | ✅ |
 | PaymentMethodService | ✅ | ✅ | ✅ |
-| SavingsService | ✅ | ✅ | 🔴 UI 없음 |
-| BankAccountService | ✅ | ✅ | 🔴 UI 없음 |
-| IncomeTargetService | ✅ | ✅ | 🔴 UI 없음 |
+| SavingsService | ✅ | ✅ | ✅ (Settings + Statistics) |
+| BankAccountService | ✅ | ✅ | ✅ (Settings + Statistics) |
+| IncomeTargetService | ✅ | ✅ | ✅ (Settings + Statistics) |
 | BudgetService | ✅ | ✅ (100%) | ✅ |
 | AutoSyncService | ✅ | ✅ | ✅ (App.tsx) |
 | GoogleAuthService | ✅ | ✅ | ✅ (Settings + AutoSync) |
