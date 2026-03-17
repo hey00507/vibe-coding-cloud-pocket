@@ -11,18 +11,22 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2B4C7E"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.cloudpocket.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ethankim.cloudpocket",
+      "infoPlist": {
+        "CFBundleDisplayName": "CloudPocket",
+        "UIBackgroundModes": []
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2B4C7E"
       },
-      "package": "com.cloudpocket.app"
+      "package": "com.ethankim.cloudpocket"
     },
     "web": {
       "bundler": "metro",
