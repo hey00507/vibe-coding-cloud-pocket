@@ -7,6 +7,7 @@ import { IncomeTargetService } from './IncomeTargetService';
 import { SavingsService } from './SavingsService';
 import { BankAccountService } from './BankAccountService';
 import { BudgetService } from './BudgetService';
+import { AutoSyncService } from './AutoSyncService';
 import { GoogleAuthService } from './GoogleAuthService';
 import { GoogleSheetsService } from './GoogleSheetsService';
 
@@ -27,4 +28,8 @@ export const googleSheetsService = new GoogleSheetsService({
   categoryService,
   paymentMethodService,
   subCategoryService,
+});
+export const autoSyncService = new AutoSyncService({
+  authService: googleAuthService,
+  sheetsService: googleSheetsService,
 });

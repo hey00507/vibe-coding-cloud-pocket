@@ -10,6 +10,7 @@ import AddTransactionScreen from './src/views/screens/AddTransactionScreen';
 import StatisticsScreen from './src/views/screens/StatisticsScreen';
 import SettingsScreen from './src/views/screens/SettingsScreen';
 import { initializeApp } from './src/services/AppInitializer';
+import { autoSyncService } from './src/services/ServiceRegistry';
 import { ThemeProvider } from './src/controllers/ThemeContext';
 import { useTheme } from './src/controllers/useTheme';
 
@@ -24,7 +25,17 @@ function AppContent() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    initializeApp().then(() => setIsReady(true));
+    initializeApp()
+      .then(() => setIsReady(true))
+      .then(() => {
+        // Google Sheets 자동 동기화 (인증 hydrate + 초기화 + 조건부 export)
+        autoSyncService.initializeAndSync();
+        autoSyncService.startListening();
+      });
+
+    return () => {
+      autoSyncService.stopListening();
+    };
   }, []);
 
   if (!isReady) {
