@@ -43,10 +43,10 @@
 | Phase 1.5 | ✅ 완료 | 테마 시스템 + 캘린더 뷰 | 포함 |
 | Phase 2 | ✅ 완료 | AsyncStorage 영속화 (전 서비스) | 포함 |
 | Phase 3 | ✅ 완료 | Google Sheets 연동 (GCP + OAuth + 실기기 검증) | 포함 |
-| **MS1** | ⏳ 다음 | 예산 기능 (카테고리별 월 예산 + 소진률) | - |
-| MS2 | 대기 | 자동 동기화 (앱 시작/백그라운드) | - |
+| MS1 | ✅ 완료 | 예산 기능 (카테고리별 월 예산 + 소진률) | 705개 통과 |
+| **MS2** | ⏳ 다음 | 자동 동기화 (앱 시작/백그라운드) | - |
 | MS3 | 대기 | Xcode 빌드 + AltStore 배포 | - |
-| MS4 | 대기 | iOS 위젯 (WidgetKit) | - |
+| MS4 | 대기 | iOS 위젯 (WidgetKit, Swift) | - |
 | MS5 | 대기 | 수입/저축/자산 관리 UI | - |
 | MS6 | 대기 | 연도 전환 자동화 + 추가 위젯 | - |
 
@@ -91,6 +91,7 @@
 | SavingsService | ✅ | ✅ | 🔴 UI 없음 |
 | BankAccountService | ✅ | ✅ | 🔴 UI 없음 |
 | IncomeTargetService | ✅ | ✅ | 🔴 UI 없음 |
+| BudgetService | ✅ | ✅ (100%) | ✅ |
 | GoogleAuthService | ✅ | ✅ | 🔴 placeholder |
 | GoogleSheetsService | ✅ | ✅ | 🔴 placeholder |
 | StorageService | ✅ | ✅ | ✅ |
