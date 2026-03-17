@@ -107,7 +107,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       }
 
       // 카테고리 매트릭스 (각 행을 10열로 패딩 — E~N열)
-      const maxCategoryCols = 11; // E41:O50 = 11열 (대분류 1 + 소분류 최대 10)
+      const maxCategoryCols = 16; // E41:T50 = 16열 (대분류 1 + 소분류 최대 15)
       const maxCategoryRows = 10; // 10행
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);

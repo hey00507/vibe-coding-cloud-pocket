@@ -23,7 +23,7 @@ export const SHEET_NAMES = {
 // 셀 범위 (실제 스프레드시트 구조 매핑 2026-03-16)
 export const CELL_RANGES = {
   // 설정 시트
-  CATEGORIES: "'(필수)설정 시트'!E41:O50",       // 대분류(E열) + 소분류(F~O열), 행 41~50 (최대 11열)
+  CATEGORIES: "'(필수)설정 시트'!E41:T50",       // 대분류(E열) + 소분류(F~T열), 행 41~50 (최대 16열)
   PAYMENT_CREDIT: "'(필수)설정 시트'!B12:B16",    // 신용카드 목록 (B열, 헤더 B11="신용")
   PAYMENT_DEBIT: "'(필수)설정 시트'!C12:C16",     // 체크카드 목록 (C열, 헤더 C11="체크")
   PAYMENT_HEADERS: "'(필수)설정 시트'!B11:C11",   // 결제수단 헤더 ("신용", "체크")
