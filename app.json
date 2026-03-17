@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.ethankim.cloudpocket",
+      "appleTeamId": "Y3RX7DCMNV",
       "infoPlist": {
         "CFBundleDisplayName": "CloudPocket",
         "UIBackgroundModes": []
