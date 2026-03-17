@@ -9,13 +9,21 @@ import {
   PaymentMethodBreakdown,
 } from '../../types';
 import {
+  BankAccount,
+} from '../../types';
+import {
   transactionService,
   categoryService,
   paymentMethodService,
   savingsService,
+  bankAccountService,
+  incomeTargetService,
 } from '../../services/ServiceRegistry';
 import PeriodSelector from '../components/PeriodSelector';
 import SummaryCard from '../components/SummaryCard';
+import SavingsSummaryCard from '../components/SavingsSummaryCard';
+import AssetOverview from '../components/AssetOverview';
+import IncomeSummaryCard, { IncomeComparisonItem } from '../components/IncomeSummaryCard';
 import BreakdownList, { BreakdownItem } from '../components/BreakdownList';
 import DonutChart, { DonutChartSegment } from '../components/DonutChart';
 import GroupedBarChart, { MonthlyBarData } from '../components/GroupedBarChart';
@@ -41,6 +49,14 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
   const [paymentItems, setPaymentItems] = useState<BreakdownItem[]>([]);
   const [donutSegments, setDonutSegments] = useState<DonutChartSegment[]>([]);
   const [monthlyBarData, setMonthlyBarData] = useState<MonthlyBarData[]>([]);
+
+  // 자산/저축/수입 목표
+  const [totalSavings, setTotalSavings] = useState(0);
+  const [monthlySavingsTarget, setMonthlySavingsTarget] = useState(0);
+  const [activeProductCount, setActiveProductCount] = useState(0);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [totalAssets, setTotalAssets] = useState(0);
+  const [incomeComparison, setIncomeComparison] = useState<IncomeComparisonItem[]>([]);
 
   const loadData = useCallback(() => {
     // 기간별 요약
@@ -96,6 +112,34 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
       }
       setMonthlyBarData(barData);
     }
+
+    // 저축 현황
+    setTotalSavings(savingsService.getTotalCurrentAmount());
+    setMonthlySavingsTarget(savingsService.getMonthlySavingsTotal());
+    setActiveProductCount(savingsService.getByStatus('active').length);
+
+    // 자산 현황
+    setBankAccounts(bankAccountService.getActiveAccounts());
+    setTotalAssets(bankAccountService.getTotalAssets());
+
+    // 수입 목표 vs 실적
+    const targets = incomeTargetService.getByMonth(currentYear, currentMonth);
+    const incomeItems: IncomeComparisonItem[] = targets.map((t) => {
+      const cat = categoryService.getById(t.categoryId);
+      const incomeTransactions = transactionService
+        .getByCategoryId(t.categoryId)
+        .filter((tx) => {
+          const txDate = new Date(tx.date);
+          return txDate.getFullYear() === currentYear && txDate.getMonth() + 1 === currentMonth;
+        });
+      const actual = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+      return {
+        categoryName: cat?.name ?? '미분류',
+        targetAmount: t.targetAmount,
+        actualAmount: actual,
+      };
+    });
+    setIncomeComparison(incomeItems);
   }, [periodType, currentYear, currentMonth]);
 
   useFocusEffect(
@@ -208,6 +252,13 @@ export default function StatisticsScreen({}: StatisticsScreenProps) {
       )}
       <BreakdownList title="카테고리별 지출" items={categoryItems} />
       <BreakdownList title="결제수단별 지출" items={paymentItems} />
+      {periodType === 'monthly' && <IncomeSummaryCard items={incomeComparison} />}
+      <SavingsSummaryCard
+        totalSavings={totalSavings}
+        monthlySavingsTarget={monthlySavingsTarget}
+        activeProductCount={activeProductCount}
+      />
+      <AssetOverview accounts={bankAccounts} totalAssets={totalAssets} />
     </ScrollView>
   );
 }

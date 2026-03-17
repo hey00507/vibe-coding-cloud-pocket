@@ -22,7 +22,12 @@ import {
   SubCategory,
   PaymentMethod,
   Budget,
+  SavingsProduct,
+  BankAccount,
+  IncomeTarget,
   TransactionType,
+  SavingsProductStatus,
+  BankTier,
   CreateCategoryInput,
   CreateSubCategoryInput,
   CreatePaymentMethodInput,
@@ -33,6 +38,9 @@ import {
   paymentMethodService,
   subCategoryService,
   budgetService,
+  savingsService,
+  bankAccountService,
+  incomeTargetService,
   googleAuthService,
   googleSheetsService,
 } from '../../services/ServiceRegistry';
@@ -42,7 +50,8 @@ import { useTheme } from '../../controllers/useTheme';
 import { ThemeMode } from '../../types/theme';
 import { SyncResult } from '../../types/googleSheets';
 
-type TabType = 'category' | 'paymentMethod' | 'budget';
+type TabType = 'category' | 'paymentMethod' | 'budget' | 'asset';
+type AssetSubTab = 'savings' | 'bank' | 'incomeTarget';
 
 const CATEGORY_ICONS = ['🍔', '🚗', '🏠', '💡', '🎮', '👕', '💊', '📚', '✈️', '💰', '💼', '🎁'];
 const SUB_CATEGORY_ICONS = ['📋', '🛒', '🍽️', '☕', '🛵', '🚌', '🚕', '⛽', '🧻', '🏥', '🎬', '🎨', '🎓', '💐', '🐾', '🦴'];
@@ -174,6 +183,35 @@ export default function SettingsScreen() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
 
+  // 자산 탭 상태
+  const [assetSubTab, setAssetSubTab] = useState<AssetSubTab>('savings');
+  const [savingsProducts, setSavingsProducts] = useState<SavingsProduct[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [incomeTargets, setIncomeTargets] = useState<IncomeTarget[]>([]);
+
+  // 저축 모달
+  const [savingsModalVisible, setSavingsModalVisible] = useState(false);
+  const [editingSavingsId, setEditingSavingsId] = useState<string | null>(null);
+  const [savingsName, setSavingsName] = useState('');
+  const [savingsBank, setSavingsBank] = useState('');
+  const [savingsRate, setSavingsRate] = useState('');
+  const [savingsMonthly, setSavingsMonthly] = useState('');
+  const [savingsStatus, setSavingsStatus] = useState<SavingsProductStatus>('active');
+
+  // 은행 모달
+  const [bankModalVisible, setBankModalVisible] = useState(false);
+  const [editingBankId, setEditingBankId] = useState<string | null>(null);
+  const [bankName, setBankName] = useState('');
+  const [bankPurpose, setBankPurpose] = useState('');
+  const [bankBalance, setBankBalance] = useState('');
+  const [bankTier, setBankTier] = useState<BankTier>('primary');
+
+  // 수입 목표 모달
+  const [incomeModalVisible, setIncomeModalVisible] = useState(false);
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null);
+  const [incomeCategoryId, setIncomeCategoryId] = useState('');
+  const [incomeAmount, setIncomeAmount] = useState('');
+
   const loadCategories = useCallback(() => {
     const cats = categoryService.getByType(categoryType);
     setCategories(cats);
@@ -200,12 +238,20 @@ export default function SettingsScreen() {
     setBudgets(budgetService.getByMonth(year, month));
   }, []);
 
+  const loadAssets = useCallback(() => {
+    setSavingsProducts(savingsService.getAll());
+    setBankAccounts(bankAccountService.getAll());
+    const now = new Date();
+    setIncomeTargets(incomeTargetService.getByMonth(now.getFullYear(), now.getMonth() + 1));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadCategories();
       loadPaymentMethods();
       loadBudgets();
-    }, [loadCategories, loadPaymentMethods, loadBudgets])
+      loadAssets();
+    }, [loadCategories, loadPaymentMethods, loadBudgets, loadAssets])
   );
 
   // 카테고리 토글
@@ -416,6 +462,146 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // 저축 핸들러
+  const handleOpenSavingsModal = (product?: SavingsProduct) => {
+    if (product) {
+      setEditingSavingsId(product.id);
+      setSavingsName(product.name);
+      setSavingsBank(product.bank);
+      setSavingsRate(product.interestRate.toString());
+      setSavingsMonthly(product.monthlyAmount.toString());
+      setSavingsStatus(product.status);
+    } else {
+      setEditingSavingsId(null);
+      setSavingsName('');
+      setSavingsBank('');
+      setSavingsRate('');
+      setSavingsMonthly('');
+      setSavingsStatus('active');
+    }
+    setSavingsModalVisible(true);
+  };
+
+  const handleSaveSavings = () => {
+    if (!savingsName.trim()) { Alert.alert('오류', '상품명을 입력해주세요'); return; }
+    const monthly = parseInt(savingsMonthly, 10);
+    if (isNaN(monthly) || monthly <= 0) { Alert.alert('오류', '월 납입액을 입력해주세요'); return; }
+
+    if (editingSavingsId) {
+      savingsService.update(editingSavingsId, {
+        name: savingsName.trim(), bank: savingsBank.trim(),
+        interestRate: parseFloat(savingsRate) || 0, monthlyAmount: monthly, status: savingsStatus,
+      });
+    } else {
+      savingsService.create({
+        name: savingsName.trim(), bank: savingsBank.trim(), status: savingsStatus,
+        interestRate: parseFloat(savingsRate) || 0, monthlyAmount: monthly,
+        paidMonths: 0, currentAmount: 0,
+      });
+    }
+    setSavingsModalVisible(false);
+    loadAssets();
+    Alert.alert('완료', editingSavingsId ? '저축 상품이 수정되었습니다' : '저축 상품이 추가되었습니다');
+  };
+
+  const handleDeleteSavings = (id: string, name: string) => {
+    Alert.alert('삭제 확인', `"${name}" 상품을 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => { savingsService.delete(id); loadAssets(); } },
+    ]);
+  };
+
+  // 은행 계좌 핸들러
+  const handleOpenBankModal = (account?: BankAccount) => {
+    if (account) {
+      setEditingBankId(account.id);
+      setBankName(account.bank);
+      setBankPurpose(account.purpose);
+      setBankBalance(account.balance.toString());
+      setBankTier(account.tier);
+    } else {
+      setEditingBankId(null);
+      setBankName('');
+      setBankPurpose('');
+      setBankBalance('');
+      setBankTier('primary');
+    }
+    setBankModalVisible(true);
+  };
+
+  const handleSaveBank = () => {
+    if (!bankName.trim()) { Alert.alert('오류', '은행명을 입력해주세요'); return; }
+    if (editingBankId) {
+      bankAccountService.update(editingBankId, {
+        bank: bankName.trim(), purpose: bankPurpose.trim(),
+        balance: parseInt(bankBalance, 10) || 0, tier: bankTier,
+      });
+    } else {
+      bankAccountService.create({
+        bank: bankName.trim(), purpose: bankPurpose.trim(),
+        balance: parseInt(bankBalance, 10) || 0, tier: bankTier, isActive: true,
+      });
+    }
+    setBankModalVisible(false);
+    loadAssets();
+    Alert.alert('완료', editingBankId ? '계좌가 수정되었습니다' : '계좌가 추가되었습니다');
+  };
+
+  const handleDeleteBank = (id: string, name: string) => {
+    Alert.alert('삭제 확인', `"${name}" 계좌를 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => { bankAccountService.delete(id); loadAssets(); } },
+    ]);
+  };
+
+  // 수입 목표 핸들러
+  const incomeCategories = useMemo(() => categoryService.getByType('income'), [categories]);
+
+  const handleOpenIncomeModal = (target?: IncomeTarget) => {
+    if (target) {
+      setEditingIncomeId(target.id);
+      setIncomeCategoryId(target.categoryId);
+      setIncomeAmount(target.targetAmount.toString());
+    } else {
+      setEditingIncomeId(null);
+      setIncomeCategoryId('');
+      setIncomeAmount('');
+    }
+    setIncomeModalVisible(true);
+  };
+
+  const handleSaveIncome = () => {
+    if (!incomeCategoryId) { Alert.alert('오류', '카테고리를 선택해주세요'); return; }
+    const amount = parseInt(incomeAmount, 10);
+    if (isNaN(amount) || amount <= 0) { Alert.alert('오류', '목표 금액을 입력해주세요'); return; }
+
+    const now = new Date();
+    if (editingIncomeId) {
+      incomeTargetService.update(editingIncomeId, { targetAmount: amount });
+    } else {
+      incomeTargetService.create({
+        categoryId: incomeCategoryId, targetAmount: amount,
+        year: now.getFullYear(), month: now.getMonth() + 1,
+      });
+    }
+    setIncomeModalVisible(false);
+    loadAssets();
+    Alert.alert('완료', editingIncomeId ? '수입 목표가 수정되었습니다' : '수입 목표가 추가되었습니다');
+  };
+
+  const handleDeleteIncome = (id: string, name: string) => {
+    Alert.alert('삭제 확인', `"${name}" 수입 목표를 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => { incomeTargetService.delete(id); loadAssets(); } },
+    ]);
+  };
+
+  const TIER_OPTIONS: { label: string; value: BankTier }[] = [
+    { label: '1금융권', value: 'primary' },
+    { label: '2금융권', value: 'secondary' },
+    { label: '저축은행', value: 'savings_bank' },
+  ];
+
   const formatBudgetAmount = (amount: number): string => {
     return amount.toLocaleString('ko-KR') + '원';
   };
@@ -565,6 +751,23 @@ export default function SettingsScreen() {
             예산
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.mainTab,
+            activeTab === 'asset' && { borderBottomColor: theme.colors.primary },
+          ]}
+          onPress={() => setActiveTab('asset')}
+        >
+          <Text
+            style={[
+              styles.mainTabText,
+              { color: theme.colors.textTertiary },
+              activeTab === 'asset' && { color: theme.colors.primary },
+            ]}
+          >
+            자산
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* 카테고리 탭 */}
@@ -701,6 +904,262 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </>
       )}
+
+      {/* 자산 탭 */}
+      {activeTab === 'asset' && (
+        <>
+          <View style={styles.subTabContainer}>
+            {([
+              { key: 'savings' as AssetSubTab, label: '저축' },
+              { key: 'bank' as AssetSubTab, label: '계좌' },
+              { key: 'incomeTarget' as AssetSubTab, label: '수입 목표' },
+            ]).map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.subTab,
+                  { backgroundColor: theme.colors.border },
+                  assetSubTab === tab.key && { backgroundColor: theme.colors.primary },
+                ]}
+                onPress={() => setAssetSubTab(tab.key)}
+              >
+                <Text style={[
+                  styles.subTabText,
+                  { color: theme.colors.textSecondary },
+                  assetSubTab === tab.key && styles.subTabTextActive,
+                ]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* 저축 서브탭 */}
+          {assetSubTab === 'savings' && (
+            <>
+              <FlatList
+                data={savingsProducts}
+                renderItem={({ item }) => (
+                  <View style={[styles.listItem, { backgroundColor: theme.colors.cardBackground }]}>
+                    <TouchableOpacity style={styles.itemInfo} onPress={() => handleOpenSavingsModal(item)}>
+                      <Text style={styles.itemIcon}>{item.status === 'active' ? '💰' : '⏳'}</Text>
+                      <View>
+                        <Text style={[styles.itemName, { color: theme.colors.text }]}>{item.name}</Text>
+                        <Text style={[styles.itemType, { color: theme.colors.textTertiary }]}>
+                          {item.bank} · {item.interestRate}% · 월 {item.monthlyAmount.toLocaleString()}원
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+                      onPress={() => handleDeleteSavings(item.id, item.name)}
+                    >
+                      <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={() => renderEmpty('저축 상품')}
+              />
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => handleOpenSavingsModal()}
+              >
+                <Text style={styles.addButtonText}>+ 저축 상품 추가</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* 계좌 서브탭 */}
+          {assetSubTab === 'bank' && (
+            <>
+              <FlatList
+                data={bankAccounts}
+                renderItem={({ item }) => (
+                  <View style={[styles.listItem, { backgroundColor: theme.colors.cardBackground }]}>
+                    <TouchableOpacity style={styles.itemInfo} onPress={() => handleOpenBankModal(item)}>
+                      <Text style={styles.itemIcon}>🏦</Text>
+                      <View>
+                        <Text style={[styles.itemName, { color: theme.colors.text }]}>{item.bank}</Text>
+                        <Text style={[styles.itemType, { color: theme.colors.textTertiary }]}>
+                          {item.purpose} · {item.balance.toLocaleString()}원
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+                      onPress={() => handleDeleteBank(item.id, item.bank)}
+                    >
+                      <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={() => renderEmpty('은행 계좌')}
+              />
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => handleOpenBankModal()}
+              >
+                <Text style={styles.addButtonText}>+ 계좌 추가</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* 수입 목표 서브탭 */}
+          {assetSubTab === 'incomeTarget' && (
+            <>
+              <FlatList
+                data={incomeTargets}
+                renderItem={({ item }) => {
+                  const cat = categoryService.getById(item.categoryId);
+                  return (
+                    <View style={[styles.listItem, { backgroundColor: theme.colors.cardBackground }]}>
+                      <TouchableOpacity style={styles.itemInfo} onPress={() => handleOpenIncomeModal(item)}>
+                        <Text style={styles.itemIcon}>{cat?.icon ?? '💼'}</Text>
+                        <View>
+                          <Text style={[styles.itemName, { color: theme.colors.text }]}>{cat?.name ?? '미분류'}</Text>
+                          <Text style={[styles.itemType, { color: theme.colors.textTertiary }]}>
+                            목표: {item.targetAmount.toLocaleString()}원
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+                        onPress={() => handleDeleteIncome(item.id, cat?.name ?? '미분류')}
+                      >
+                        <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={() => renderEmpty('수입 목표')}
+              />
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => handleOpenIncomeModal()}
+              >
+                <Text style={styles.addButtonText}>+ 수입 목표 추가</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </>
+      )}
+
+      {/* 저축 상품 모달 */}
+      <Modal visible={savingsModalVisible} animationType="slide" transparent onRequestClose={() => setSavingsModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {editingSavingsId ? '저축 상품 수정' : '새 저축 상품'}
+            </Text>
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="상품명" value={savingsName} onChangeText={setSavingsName} placeholderTextColor={theme.colors.textTertiary} />
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="은행" value={savingsBank} onChangeText={setSavingsBank} placeholderTextColor={theme.colors.textTertiary} />
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="금리 (%)" value={savingsRate} onChangeText={setSavingsRate} keyboardType="decimal-pad" placeholderTextColor={theme.colors.textTertiary} />
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="월 납입액" value={savingsMonthly} onChangeText={setSavingsMonthly} keyboardType="numeric" placeholderTextColor={theme.colors.textTertiary} />
+            <View style={styles.optionsContainer}>
+              {([{ label: '운용중', value: 'active' as SavingsProductStatus }, { label: '대기', value: 'pending' as SavingsProductStatus }]).map((opt) => (
+                <TouchableOpacity key={opt.value} style={[styles.typeOption, { backgroundColor: theme.colors.surface }, savingsStatus === opt.value && { backgroundColor: theme.colors.primary }]}
+                  onPress={() => setSavingsStatus(opt.value)}>
+                  <Text style={[styles.typeOptionText, { color: theme.colors.textSecondary }, savingsStatus === opt.value && styles.typeOptionTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.colors.border }]} onPress={() => setSavingsModalVisible(false)}>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]} onPress={handleSaveSavings}>
+                <Text style={styles.confirmText}>{editingSavingsId ? '수정' : '추가'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* 은행 계좌 모달 */}
+      <Modal visible={bankModalVisible} animationType="slide" transparent onRequestClose={() => setBankModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {editingBankId ? '계좌 수정' : '새 계좌'}
+            </Text>
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="은행명" value={bankName} onChangeText={setBankName} placeholderTextColor={theme.colors.textTertiary} />
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="용도 (예: 급여, 저축)" value={bankPurpose} onChangeText={setBankPurpose} placeholderTextColor={theme.colors.textTertiary} />
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="잔액" value={bankBalance} onChangeText={setBankBalance} keyboardType="numeric" placeholderTextColor={theme.colors.textTertiary} />
+            <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>등급</Text>
+            <View style={styles.optionsContainer}>
+              {TIER_OPTIONS.map((opt) => (
+                <TouchableOpacity key={opt.value} style={[styles.typeOption, { backgroundColor: theme.colors.surface }, bankTier === opt.value && { backgroundColor: theme.colors.primary }]}
+                  onPress={() => setBankTier(opt.value)}>
+                  <Text style={[styles.typeOptionText, { color: theme.colors.textSecondary }, bankTier === opt.value && styles.typeOptionTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.colors.border }]} onPress={() => setBankModalVisible(false)}>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]} onPress={handleSaveBank}>
+                <Text style={styles.confirmText}>{editingBankId ? '수정' : '추가'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* 수입 목표 모달 */}
+      <Modal visible={incomeModalVisible} animationType="slide" transparent onRequestClose={() => setIncomeModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {editingIncomeId ? '수입 목표 수정' : '새 수입 목표'}
+            </Text>
+            {!editingIncomeId && (
+              <>
+                <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>카테고리 선택</Text>
+                <View style={styles.optionsContainer}>
+                  {incomeCategories.map((cat) => (
+                    <TouchableOpacity key={cat.id} style={[styles.typeOption, { backgroundColor: theme.colors.surface }, incomeCategoryId === cat.id && { backgroundColor: theme.colors.primary }]}
+                      onPress={() => setIncomeCategoryId(cat.id)}>
+                      <Text style={[styles.typeOptionText, { color: theme.colors.textSecondary }, incomeCategoryId === cat.id && styles.typeOptionTextActive]}>
+                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+            <TextInput style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="월 목표 금액" value={incomeAmount} onChangeText={setIncomeAmount} keyboardType="numeric" placeholderTextColor={theme.colors.textTertiary} />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.colors.border }]} onPress={() => setIncomeModalVisible(false)}>
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]} onPress={handleSaveIncome}>
+                <Text style={styles.confirmText}>{editingIncomeId ? '수정' : '추가'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* 예산 추가/수정 모달 */}
       <Modal
