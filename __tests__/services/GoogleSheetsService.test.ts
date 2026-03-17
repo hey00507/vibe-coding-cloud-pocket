@@ -329,8 +329,10 @@ describe('GoogleSheetsService', () => {
       expect(body.data).toHaveLength(3);
 
       const categoryData = body.data.find((d: any) => d.range.includes('E41'));
-      expect(categoryData.values[0]).toEqual(['식비', '🍔외식', '☕카페']);
-      expect(categoryData.values.length).toBe(10); // 패딩 포함
+      // 각 행이 10열로 패딩됨
+      expect(categoryData.values[0].slice(0, 3)).toEqual(['식비', '🍔외식', '☕카페']);
+      expect(categoryData.values[0].length).toBe(10); // 열 패딩
+      expect(categoryData.values.length).toBe(10); // 행 패딩
     });
 
     it('exportSettings - 카테고리 비어있으면 에러', async () => {

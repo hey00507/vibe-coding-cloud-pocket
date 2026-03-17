@@ -106,17 +106,20 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         );
       }
 
-      // 카테고리 매트릭스 (패딩 포함)
+      // 카테고리 매트릭스 (각 행을 10열로 패딩 — E~N열)
+      const maxCategoryCols = 10; // E41:N50 = 10열
+      const maxCategoryRows = 10; // 10행
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
         const subNames = subs.map((sc) =>
           sc.icon ? `${sc.icon}${sc.name}` : sc.name
         );
-        return [cat.name, ...subNames] as (string | number | null)[];
+        const row = [cat.name, ...subNames] as (string | number | null)[];
+        while (row.length < maxCategoryCols) row.push('');
+        return row;
       });
-      const maxCategoryRows = 10;
       while (categoryMatrix.length < maxCategoryRows) {
-        categoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
+        categoryMatrix.push(new Array(maxCategoryCols).fill(''));
       }
 
       // 결제수단 (패딩 포함)
@@ -269,16 +272,19 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         );
       }
 
+      const maxCategoryCols = 10;
+      const maxCategoryRows = 10;
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
         const subNames = subs.map((sc) =>
           sc.icon ? `${sc.icon}${sc.name}` : sc.name
         );
-        return [cat.name, ...subNames] as (string | number | null)[];
+        const row = [cat.name, ...subNames] as (string | number | null)[];
+        while (row.length < maxCategoryCols) row.push('');
+        return row;
       });
-      const maxCategoryRows = 10;
       while (categoryMatrix.length < maxCategoryRows) {
-        categoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
+        categoryMatrix.push(new Array(maxCategoryCols).fill(''));
       }
 
       const maxPaymentRows = 5;
