@@ -10,15 +10,17 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { HomeScreenProps } from '../../types/navigation';
-import { Transaction, TransactionType, DailySummary, Category, PaymentMethod } from '../../types';
+import { Transaction, TransactionType, DailySummary, Category, PaymentMethod, BudgetProgress, BudgetStatus } from '../../types';
 import {
   transactionService,
   categoryService,
   paymentMethodService,
   subCategoryService,
+  budgetService,
 } from '../../services/ServiceRegistry';
 import TransactionItem from '../components/TransactionItem';
 import SummaryCard from '../components/SummaryCard';
+import BudgetProgressBar from '../components/BudgetProgressBar';
 import ViewToggle, { ViewMode } from '../components/ViewToggle';
 import CalendarHeader from '../components/CalendarHeader';
 import CalendarGrid from '../components/CalendarGrid';
@@ -38,6 +40,13 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [balance, setBalance] = useState(0);
+
+  // 예산 상태
+  const [budgetCollapsed, setBudgetCollapsed] = useState(false);
+  const [budgetCategoryProgress, setBudgetCategoryProgress] = useState<BudgetProgress[]>([]);
+  const [budgetTotalProgress, setBudgetTotalProgress] = useState<{
+    budget: number; spent: number; remaining: number; percentage: number; status: BudgetStatus;
+  }>({ budget: 0, spent: 0, remaining: 0, percentage: 0, status: 'safe' });
 
   // 캘린더 뷰 상태
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -93,6 +102,34 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
     setDailySummaries(transactionService.getDailySummaries(currentYear, currentMonth));
     setCategories(categoryService.getAll());
     setPaymentMethods(paymentMethodService.getAll());
+
+    // 예산 데이터
+    const now = new Date();
+    const budgetYear = now.getFullYear();
+    const budgetMonth = now.getMonth() + 1;
+    budgetService.copyFromPreviousMonth(budgetYear, budgetMonth);
+
+    const allCategories = categoryService.getAll();
+    const categoryNames = new Map(allCategories.map((c) => [c.id, c.name]));
+
+    // 카테고리별 지출 합산
+    const monthStart = new Date(budgetYear, budgetMonth - 1, 1);
+    const monthEnd = new Date(budgetYear, budgetMonth, 0, 23, 59, 59);
+    const monthTransactions = transactionService.getByDateRange(monthStart, monthEnd);
+    const expenseMap = new Map<string, number>();
+    monthTransactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        expenseMap.set(t.categoryId, (expenseMap.get(t.categoryId) ?? 0) + t.amount);
+      });
+
+    const catProgress = budgetService.getProgress(budgetYear, budgetMonth, expenseMap, categoryNames);
+    setBudgetCategoryProgress(catProgress);
+
+    const monthlyExp = monthTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    setBudgetTotalProgress(budgetService.getTotalProgress(budgetYear, budgetMonth, monthlyExp));
   }, [currentYear, currentMonth]);
 
   useFocusEffect(
@@ -197,6 +234,17 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
             totalExpense={totalExpense}
           />
 
+          <TouchableOpacity
+            onPress={() => setBudgetCollapsed(!budgetCollapsed)}
+            activeOpacity={0.7}
+          >
+            <BudgetProgressBar
+              totalProgress={budgetTotalProgress}
+              categoryProgress={budgetCategoryProgress}
+              collapsed={budgetCollapsed}
+            />
+          </TouchableOpacity>
+
           <View style={styles.filterContainer}>
             {(['all', 'income', 'expense'] as FilterType[]).map((type) => (
               <TouchableOpacity
@@ -266,6 +314,17 @@ export default function HomeScreen({ navigation, route }: HomeScreenProps) {
               </Text>
             </View>
           </View>
+
+          <TouchableOpacity
+            onPress={() => setBudgetCollapsed(!budgetCollapsed)}
+            activeOpacity={0.7}
+          >
+            <BudgetProgressBar
+              totalProgress={budgetTotalProgress}
+              categoryProgress={budgetCategoryProgress}
+              collapsed={budgetCollapsed}
+            />
+          </TouchableOpacity>
 
           <CalendarGrid
             year={currentYear}

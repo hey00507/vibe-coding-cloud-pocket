@@ -16,6 +16,7 @@ import {
   Category,
   SubCategory,
   PaymentMethod,
+  Budget,
   TransactionType,
   CreateCategoryInput,
   CreateSubCategoryInput,
@@ -26,6 +27,7 @@ import {
   categoryService,
   paymentMethodService,
   subCategoryService,
+  budgetService,
   googleAuthService,
   googleSheetsService,
 } from '../../services/ServiceRegistry';
@@ -35,7 +37,7 @@ import { useTheme } from '../../controllers/useTheme';
 import { ThemeMode } from '../../types/theme';
 import { SyncResult } from '../../types/googleSheets';
 
-type TabType = 'category' | 'paymentMethod';
+type TabType = 'category' | 'paymentMethod' | 'budget';
 
 const CATEGORY_ICONS = ['🍔', '🚗', '🏠', '💡', '🎮', '👕', '💊', '📚', '✈️', '💰', '💼', '🎁'];
 const SUB_CATEGORY_ICONS = ['📋', '🛒', '🍽️', '☕', '🛵', '🚌', '🚕', '⛽', '🧻', '🏥', '🎬', '🎨', '🎓', '💐', '🐾', '🦴'];
@@ -160,6 +162,13 @@ export default function SettingsScreen() {
   const [newPaymentIcon, setNewPaymentIcon] = useState('');
   const [newPaymentType, setNewPaymentType] = useState<PaymentMethodType>('credit');
 
+  // 예산 상태
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [budgetModalVisible, setBudgetModalVisible] = useState(false);
+  const [budgetCategoryId, setBudgetCategoryId] = useState('');
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+
   const loadCategories = useCallback(() => {
     const cats = categoryService.getByType(categoryType);
     setCategories(cats);
@@ -177,11 +186,21 @@ export default function SettingsScreen() {
     setPaymentMethods(methods);
   }, []);
 
+  const loadBudgets = useCallback(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    // 이전 월 예산 자동 복사
+    budgetService.copyFromPreviousMonth(year, month);
+    setBudgets(budgetService.getByMonth(year, month));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadCategories();
       loadPaymentMethods();
-    }, [loadCategories, loadPaymentMethods])
+      loadBudgets();
+    }, [loadCategories, loadPaymentMethods, loadBudgets])
   );
 
   // 카테고리 토글
@@ -325,6 +344,82 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // 예산 핸들러
+  const expenseCategories = useMemo(() => categoryService.getByType('expense'), [categories]);
+
+  const handleOpenBudgetModal = (budget?: Budget) => {
+    if (budget) {
+      setEditingBudgetId(budget.id);
+      setBudgetCategoryId(budget.categoryId);
+      setBudgetAmount(budget.monthlyAmount.toString());
+    } else {
+      setEditingBudgetId(null);
+      setBudgetCategoryId('');
+      setBudgetAmount('');
+    }
+    setBudgetModalVisible(true);
+  };
+
+  const handleSaveBudget = () => {
+    const amount = parseInt(budgetAmount, 10);
+    if (!budgetCategoryId) {
+      Alert.alert('오류', '카테고리를 선택해주세요');
+      return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('오류', '유효한 금액을 입력해주세요');
+      return;
+    }
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+
+    if (editingBudgetId) {
+      budgetService.update(editingBudgetId, { monthlyAmount: amount });
+      Alert.alert('완료', '예산이 수정되었습니다');
+    } else {
+      // 같은 카테고리에 이미 예산이 있는지 확인
+      const existing = budgetService.getByCategoryAndMonth(budgetCategoryId, year, month);
+      if (existing) {
+        Alert.alert('오류', '이미 해당 카테고리에 예산이 설정되어 있습니다');
+        return;
+      }
+      budgetService.create({ categoryId: budgetCategoryId, monthlyAmount: amount, year, month });
+      Alert.alert('완료', '예산이 추가되었습니다');
+    }
+
+    setBudgetModalVisible(false);
+    setBudgetCategoryId('');
+    setBudgetAmount('');
+    setEditingBudgetId(null);
+    loadBudgets();
+  };
+
+  const handleDeleteBudget = (id: string, categoryName: string) => {
+    Alert.alert('삭제 확인', `"${categoryName}" 예산을 삭제하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => {
+          budgetService.delete(id);
+          loadBudgets();
+          Alert.alert('완료', '예산이 삭제되었습니다');
+        },
+      },
+    ]);
+  };
+
+  const formatBudgetAmount = (amount: number): string => {
+    return amount.toLocaleString('ko-KR') + '원';
+  };
+
+  const totalBudget = useMemo(
+    () => budgets.reduce((sum, b) => sum + b.monthlyAmount, 0),
+    [budgets]
+  );
+
   const getPaymentTypeLabel = (type?: PaymentMethodType): string => {
     const found = PAYMENT_TYPE_OPTIONS.find((o) => o.value === type);
     return found?.label ?? '';
@@ -448,6 +543,23 @@ export default function SettingsScreen() {
             결제수단
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.mainTab,
+            activeTab === 'budget' && { borderBottomColor: theme.colors.primary },
+          ]}
+          onPress={() => setActiveTab('budget')}
+        >
+          <Text
+            style={[
+              styles.mainTabText,
+              { color: theme.colors.textTertiary },
+              activeTab === 'budget' && { color: theme.colors.primary },
+            ]}
+          >
+            예산
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* 카테고리 탭 */}
@@ -528,6 +640,136 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </>
       )}
+
+      {/* 예산 탭 */}
+      {activeTab === 'budget' && (
+        <>
+          {/* 전체 합계 */}
+          <View style={[styles.budgetTotalSection, { backgroundColor: theme.colors.cardBackground }]}>
+            <Text style={[styles.budgetTotalLabel, { color: theme.colors.textSecondary }]}>
+              이번 달 총 예산
+            </Text>
+            <Text style={[styles.budgetTotalAmount, { color: theme.colors.text }]}>
+              {formatBudgetAmount(totalBudget)}
+            </Text>
+          </View>
+
+          <FlatList
+            data={budgets}
+            renderItem={({ item }) => {
+              const cat = categoryService.getById(item.categoryId);
+              const categoryName = cat?.name ?? '(삭제된 카테고리)';
+              const categoryIcon = cat?.icon ?? '📋';
+              return (
+                <View style={[styles.listItem, { backgroundColor: theme.colors.cardBackground }]}>
+                  <TouchableOpacity
+                    style={styles.itemInfo}
+                    onPress={() => handleOpenBudgetModal(item)}
+                  >
+                    <Text style={styles.itemIcon}>{categoryIcon}</Text>
+                    <View>
+                      <Text style={[styles.itemName, { color: theme.colors.text }]}>{categoryName}</Text>
+                      <Text style={[styles.itemType, { color: theme.colors.textTertiary }]}>
+                        {formatBudgetAmount(item.monthlyAmount)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+                    onPress={() => handleDeleteBudget(item.id, categoryName)}
+                  >
+                    <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={() => renderEmpty('예산')}
+          />
+
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => handleOpenBudgetModal()}
+          >
+            <Text style={styles.addButtonText}>+ 예산 추가</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* 예산 추가/수정 모달 */}
+      <Modal
+        visible={budgetModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setBudgetModalVisible(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              {editingBudgetId ? '예산 수정' : '새 예산'}
+            </Text>
+
+            {!editingBudgetId && (
+              <>
+                <Text style={[styles.iconLabel, { color: theme.colors.textSecondary }]}>카테고리 선택</Text>
+                <View style={styles.optionsContainer}>
+                  {expenseCategories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.typeOption,
+                        { backgroundColor: theme.colors.surface },
+                        budgetCategoryId === cat.id && { backgroundColor: theme.colors.primary },
+                      ]}
+                      onPress={() => setBudgetCategoryId(cat.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeOptionText,
+                          { color: theme.colors.textSecondary },
+                          budgetCategoryId === cat.id && styles.typeOptionTextActive,
+                        ]}
+                      >
+                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
+              placeholder="월 예산 금액"
+              value={budgetAmount}
+              onChangeText={setBudgetAmount}
+              keyboardType="numeric"
+              placeholderTextColor={theme.colors.textTertiary}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
+                onPress={() => {
+                  setBudgetModalVisible(false);
+                  setBudgetCategoryId('');
+                  setBudgetAmount('');
+                  setEditingBudgetId(null);
+                }}
+              >
+                <Text style={[styles.cancelText, { color: theme.colors.textSecondary }]}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
+                onPress={handleSaveBudget}
+              >
+                <Text style={styles.confirmText}>{editingBudgetId ? '수정' : '추가'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* 카테고리 추가 모달 */}
       <Modal
@@ -941,5 +1183,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  budgetTotalSection: {
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  budgetTotalLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  budgetTotalAmount: {
+    fontSize: 24,
+    fontWeight: '700',
   },
 });
