@@ -74,9 +74,9 @@ function AppContent() {
           tabBarStyle: {
             backgroundColor: theme.colors.tabBarBackground,
             borderTopColor: theme.colors.tabBarBorder,
-            paddingBottom: 8,
-            paddingTop: 8,
-            height: 60,
+            paddingBottom: 24,
+            paddingTop: 10,
+            height: 88,
           },
           headerStyle: {
             backgroundColor: theme.colors.primary,
