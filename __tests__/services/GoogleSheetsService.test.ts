@@ -325,7 +325,7 @@ describe('GoogleSheetsService', () => {
       expect(putCalls.length).toBeGreaterThanOrEqual(1);
 
       const categoryWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('D38')
+        decodeURIComponent(url).includes('E41')
       );
       expect(categoryWrite).toBeDefined();
 
