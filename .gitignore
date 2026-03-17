@@ -46,3 +46,7 @@ coverage/
 *.log
 /tmp
 /out-tsc
+
+# Native build output
+ios/
+android/
