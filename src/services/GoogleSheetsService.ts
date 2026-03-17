@@ -94,21 +94,99 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
 
     try {
-      // 설정 내보내기
-      await this.exportSettings();
-
-      // 전체 12개월 거래 내보내기
       const now = new Date();
       const year = now.getFullYear();
-      let totalExported = 0;
 
-      for (let month = 1; month <= 12; month++) {
-        const result = await this.exportTransactions(year, month);
-        if (result.details?.transactions) {
-          totalExported += result.details.transactions;
-        }
+      // 설정 데이터 준비
+      const categories = this.deps.categoryService.getByType('expense');
+      const subCategories = this.deps.subCategoryService.getAll();
+      const paymentMethods = this.deps.paymentMethodService.getAll();
+
+      if (categories.length === 0) {
+        return this.createSyncResult(
+          'error',
+          '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
+        );
       }
 
+      // 카테고리 매트릭스 (패딩 포함)
+      const categoryMatrix = categories.map((cat) => {
+        const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
+        const subNames = subs.map((sc) =>
+          sc.icon ? `${sc.icon}${sc.name}` : sc.name
+        );
+        return [cat.name, ...subNames] as (string | number | null)[];
+      });
+      const maxCategoryRows = 10;
+      while (categoryMatrix.length < maxCategoryRows) {
+        categoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
+      }
+
+      // 결제수단 (패딩 포함)
+      const maxPaymentRows = 5;
+      const creditCards = paymentMethods
+        .filter((pm) => pm.type === 'credit')
+        .map((pm) => [pm.name] as (string | number | null)[]);
+      while (creditCards.length < maxPaymentRows) creditCards.push(['']);
+      const debitAndCash = paymentMethods
+        .filter((pm) => pm.type !== 'credit')
+        .map((pm) => [pm.name] as (string | number | null)[]);
+      while (debitAndCash.length < maxPaymentRows) debitAndCash.push(['']);
+
+      // 전체 12개월 거래 데이터 준비
+      const allTransactions = this.deps.transactionService.getAll();
+      const allCategories = this.deps.categoryService.getAll();
+      let totalExported = 0;
+
+      // batchUpdate용 데이터 배열 구성 (설정 + 12개월 거래 = 1번의 API 호출)
+      const batchData: { range: string; values: (string | number | null)[][] }[] = [
+        { range: CELL_RANGES.CATEGORIES, values: categoryMatrix },
+        { range: CELL_RANGES.PAYMENT_CREDIT, values: creditCards },
+        { range: CELL_RANGES.PAYMENT_DEBIT, values: debitAndCash },
+      ];
+
+      for (let month = 1; month <= 12; month++) {
+        const monthTransactions = allTransactions.filter((t) => {
+          const d = t.date;
+          return d.getFullYear() === year && d.getMonth() + 1 === month;
+        });
+
+        const monthName = SHEET_NAMES.MONTHS[month - 1];
+
+        // 지출 거래
+        const expenseRows = monthTransactions
+          .filter((t) => t.type === 'expense')
+          .map((t) => this.transactionToExpenseRow(t, allCategories, subCategories, paymentMethods));
+
+        // 지출 행 패딩 (기존 데이터 덮어쓰기 위해 빈 행 추가)
+        const maxExpenseRows = 50;
+        while (expenseRows.length < maxExpenseRows) {
+          expenseRows.push(['', '', '', '', '', '']);
+        }
+        batchData.push({
+          range: CELL_RANGES.EXPENSE_TRANSACTIONS(monthName),
+          values: expenseRows,
+        });
+
+        // 수입 거래
+        const incomeRows = this.aggregateIncomeByCategory(
+          monthTransactions.filter((t) => t.type === 'income'),
+          allCategories
+        );
+        const maxIncomeRows = 5;
+        while (incomeRows.length < maxIncomeRows) {
+          incomeRows.push(['', '', '']);
+        }
+        batchData.push({
+          range: CELL_RANGES.INCOME_DETAILS(monthName),
+          values: incomeRows,
+        });
+
+        totalExported += monthTransactions.length;
+      }
+
+      // 단 1번의 API 호출로 전체 내보내기
+      await this.batchWrite(batchData);
       await this.updateLastSyncTime();
 
       return this.createSyncResult('success', `전체 내보내기 완료 (${totalExported}건)`, {
@@ -139,37 +217,26 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       const subCategories = this.deps.subCategoryService.getAll();
       const paymentMethods = this.deps.paymentMethodService.getAll();
 
-      // 지출 거래 → 시트 행 변환
-      const expenseTransactions = monthTransactions.filter(
-        (t) => t.type === 'expense'
-      );
-      const expenseRows = expenseTransactions.map((t) =>
-        this.transactionToExpenseRow(t, categories, subCategories, paymentMethods)
-      );
-
-      // 수입 거래 → 카테고리별 합산
-      const incomeTransactions = monthTransactions.filter(
-        (t) => t.type === 'income'
-      );
+      const expenseRows = monthTransactions
+        .filter((t) => t.type === 'expense')
+        .map((t) => this.transactionToExpenseRow(t, categories, subCategories, paymentMethods));
       const incomeRows = this.aggregateIncomeByCategory(
-        incomeTransactions,
+        monthTransactions.filter((t) => t.type === 'income'),
         categories
       );
 
       const monthName = SHEET_NAMES.MONTHS[month - 1];
 
-      // 기존 데이터 클리어 후 쓰기
-      const expenseRange = CELL_RANGES.EXPENSE_TRANSACTIONS(monthName);
-      await this.clearRange(expenseRange);
-      if (expenseRows.length > 0) {
-        await this.writeRange(expenseRange, expenseRows);
-      }
+      // 패딩 후 batchWrite (1번 호출)
+      const maxExpenseRows = 50;
+      while (expenseRows.length < maxExpenseRows) expenseRows.push(['', '', '', '', '', '']);
+      const maxIncomeRows = 5;
+      while (incomeRows.length < maxIncomeRows) incomeRows.push(['', '', '']);
 
-      const incomeRange = CELL_RANGES.INCOME_DETAILS(monthName);
-      await this.clearRange(incomeRange);
-      if (incomeRows.length > 0) {
-        await this.writeRange(incomeRange, incomeRows);
-      }
+      await this.batchWrite([
+        { range: CELL_RANGES.EXPENSE_TRANSACTIONS(monthName), values: expenseRows },
+        { range: CELL_RANGES.INCOME_DETAILS(monthName), values: incomeRows },
+      ]);
 
       await this.updateLastSyncTime();
 
@@ -197,7 +264,13 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       const subCategories = this.deps.subCategoryService.getAll();
       const paymentMethods = this.deps.paymentMethodService.getAll();
 
-      // 카테고리 매트릭스 변환: 각 행 = [대분류명, 소분류1, 소분류2, ...]
+      if (categories.length === 0) {
+        return this.createSyncResult(
+          'error',
+          '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
+        );
+      }
+
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
         const subNames = subs.map((sc) =>
@@ -205,44 +278,27 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         );
         return [cat.name, ...subNames] as (string | number | null)[];
       });
+      const maxCategoryRows = 10;
+      while (categoryMatrix.length < maxCategoryRows) {
+        categoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
+      }
 
-      // 결제수단 변환: B열=신용카드, C열=체크카드/현금 (열별 그룹)
+      const maxPaymentRows = 5;
       const creditCards = paymentMethods
         .filter((pm) => pm.type === 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
+      while (creditCards.length < maxPaymentRows) creditCards.push(['']);
       const debitAndCash = paymentMethods
         .filter((pm) => pm.type !== 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
+      while (debitAndCash.length < maxPaymentRows) debitAndCash.push(['']);
 
-      // 카테고리가 비어있으면 시트를 건드리지 않음 (데이터 보호)
-      if (categoryMatrix.length === 0) {
-        return this.createSyncResult(
-          'error',
-          '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
-        );
-      }
-
-      // clear 없이 write만 수행 (PUT은 범위를 덮어씀)
-      // 이전 데이터가 더 많은 행을 차지했을 경우를 위해 빈 행으로 패딩
-      const maxCategoryRows = 10; // E41:N50 = 10행
-      const paddedCategoryMatrix = [...categoryMatrix];
-      while (paddedCategoryMatrix.length < maxCategoryRows) {
-        paddedCategoryMatrix.push(['', '', '', '', '', '', '', '', '', '']);
-      }
-      await this.writeRange(CELL_RANGES.CATEGORIES, paddedCategoryMatrix);
-
-      const maxPaymentRows = 5; // B12:B16 / C12:C16 = 5행
-      const paddedCredit = [...creditCards];
-      while (paddedCredit.length < maxPaymentRows) {
-        paddedCredit.push(['']);
-      }
-      await this.writeRange(CELL_RANGES.PAYMENT_CREDIT, paddedCredit);
-
-      const paddedDebit = [...debitAndCash];
-      while (paddedDebit.length < maxPaymentRows) {
-        paddedDebit.push(['']);
-      }
-      await this.writeRange(CELL_RANGES.PAYMENT_DEBIT, paddedDebit);
+      // 단 1번의 API 호출
+      await this.batchWrite([
+        { range: CELL_RANGES.CATEGORIES, values: categoryMatrix },
+        { range: CELL_RANGES.PAYMENT_CREDIT, values: creditCards },
+        { range: CELL_RANGES.PAYMENT_DEBIT, values: debitAndCash },
+      ]);
 
       await this.updateLastSyncTime();
 
@@ -268,25 +324,51 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
 
     try {
-      // 설정 먼저 가져오기
-      await this.importSettings();
-
-      // 전체 12개월 거래 가져오기
       const now = new Date();
       const year = now.getFullYear();
-      let totalImported = 0;
 
+      // 1번의 batchGet으로 설정 + 12개월 거래를 모두 읽기
+      const ranges: string[] = [
+        CELL_RANGES.CATEGORIES,
+        CELL_RANGES.PAYMENT_CREDIT,
+        CELL_RANGES.PAYMENT_DEBIT,
+      ];
       for (let month = 1; month <= 12; month++) {
-        const result = await this.importTransactions(year, month);
-        if (result.details?.transactions) {
-          totalImported += result.details.transactions;
-        }
+        const monthName = SHEET_NAMES.MONTHS[month - 1];
+        ranges.push(CELL_RANGES.EXPENSE_TRANSACTIONS(monthName));
+        ranges.push(CELL_RANGES.INCOME_DETAILS(monthName));
+      }
+
+      const allData = await this.batchRead(ranges);
+
+      // 설정 처리 (인덱스 0, 1, 2)
+      const settingsResult = this.processImportSettings(
+        allData[0] || [],
+        allData[1] || [],
+        allData[2] || []
+      );
+
+      // 거래 처리 (인덱스 3부터 2개씩: expense, income)
+      let totalImported = 0;
+      for (let month = 1; month <= 12; month++) {
+        const dataIndex = 3 + (month - 1) * 2;
+        const expenseRows = allData[dataIndex] || [];
+        const incomeRows = allData[dataIndex + 1] || [];
+
+        const imported = await this.processImportTransactions(
+          year,
+          month,
+          expenseRows,
+          incomeRows
+        );
+        totalImported += imported;
       }
 
       await this.updateLastSyncTime();
 
       return this.createSyncResult('success', `전체 가져오기 완료 (${totalImported}건)`, {
         transactions: totalImported,
+        ...settingsResult,
       });
     } catch (error) {
       return this.createSyncResult(
@@ -305,61 +387,25 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     try {
       const monthName = SHEET_NAMES.MONTHS[month - 1];
 
-      // 지출 데이터 읽기
-      const expenseRange = CELL_RANGES.EXPENSE_TRANSACTIONS(monthName);
-      const expenseRows = await this.readRange(expenseRange);
+      // 1번의 batchGet으로 지출+수입 동시 읽기
+      const allData = await this.batchRead([
+        CELL_RANGES.EXPENSE_TRANSACTIONS(monthName),
+        CELL_RANGES.INCOME_DETAILS(monthName),
+      ]);
 
-      // 수입 데이터 읽기
-      const incomeRange = CELL_RANGES.INCOME_DETAILS(monthName);
-      const incomeRows = await this.readRange(incomeRange);
-
-      // 기존 해당 월 거래 삭제
-      const existingTransactions = this.deps.transactionService.getAll().filter((t) => {
-        const d = t.date;
-        return d.getFullYear() === year && d.getMonth() + 1 === month;
-      });
-      for (const t of existingTransactions) {
-        this.deps.transactionService.delete(t.id);
-      }
-
-      let importedCount = 0;
-
-      // 지출 행 → Transaction 변환 및 생성
-      for (const row of expenseRows) {
-        if (!row || row.length === 0 || !row[0]) continue;
-
-        const transaction = await this.expenseRowToTransaction(
-          row,
-          year,
-          month
-        );
-        if (transaction) {
-          this.deps.transactionService.create(transaction);
-          importedCount++;
-        }
-      }
-
-      // 수입 행 → Transaction 변환 및 생성
-      for (const row of incomeRows) {
-        if (!row || row.length === 0 || !row[0]) continue;
-
-        const transaction = await this.incomeRowToTransaction(
-          row,
-          year,
-          month
-        );
-        if (transaction) {
-          this.deps.transactionService.create(transaction);
-          importedCount++;
-        }
-      }
+      const imported = await this.processImportTransactions(
+        year,
+        month,
+        allData[0] || [],
+        allData[1] || []
+      );
 
       await this.updateLastSyncTime();
 
       return this.createSyncResult(
         'success',
         `${year}년 ${month}월 거래 가져오기 완료`,
-        { transactions: importedCount }
+        { transactions: imported }
       );
     } catch (error) {
       return this.createSyncResult(
@@ -376,100 +422,22 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
 
     try {
-      // 카테고리 매트릭스 읽기
-      const categoryRows = await this.readRange(CELL_RANGES.CATEGORIES);
+      // 1번의 batchGet으로 설정 전체 읽기
+      const allData = await this.batchRead([
+        CELL_RANGES.CATEGORIES,
+        CELL_RANGES.PAYMENT_CREDIT,
+        CELL_RANGES.PAYMENT_DEBIT,
+      ]);
 
-      let categoriesImported = 0;
-      let subCategoriesImported = 0;
-
-      for (const row of categoryRows) {
-        if (!row || row.length === 0 || !row[0]) continue;
-
-        const categoryName = String(row[0]);
-
-        // 대분류 찾기 또는 생성
-        let category = this.deps.categoryService
-          .getByType('expense')
-          .find((c: Category) => c.name === categoryName);
-
-        if (!category) {
-          category = this.deps.categoryService.create({
-            name: categoryName,
-            type: 'expense',
-          });
-          categoriesImported++;
-        }
-
-        // 소분류 파싱 (row[1], row[2], ...)
-        for (let i = 1; i < row.length; i++) {
-          const cellValue = row[i];
-          if (!cellValue) continue;
-
-          const subName = String(cellValue);
-          const parsed = this.parseSubCategoryName(subName);
-
-          // 기존 소분류 확인
-          const existingSub = this.deps.subCategoryService
-            .getByCategoryId(category.id)
-            .find((sc: SubCategory) => sc.name === parsed.name);
-
-          if (!existingSub) {
-            this.deps.subCategoryService.create({
-              categoryId: category.id,
-              name: parsed.name,
-              icon: parsed.icon,
-            });
-            subCategoriesImported++;
-          }
-        }
-      }
-
-      // 결제수단 읽기: B열=신용, C열=체크/현금 (열별 그룹)
-      let paymentMethodsImported = 0;
-
-      const creditRows = await this.readRange(CELL_RANGES.PAYMENT_CREDIT);
-      for (const row of creditRows) {
-        if (!row || !row[0]) continue;
-        const name = String(row[0]);
-        const existing = this.deps.paymentMethodService
-          .getAll()
-          .find((pm: PaymentMethod) => pm.name === name);
-        if (!existing) {
-          this.deps.paymentMethodService.create({ name, type: 'credit' });
-          paymentMethodsImported++;
-        }
-      }
-
-      const debitRows = await this.readRange(CELL_RANGES.PAYMENT_DEBIT);
-      for (const row of debitRows) {
-        if (!row || !row[0]) continue;
-        const name = String(row[0]);
-        if (name === '현금') {
-          const existing = this.deps.paymentMethodService
-            .getAll()
-            .find((pm: PaymentMethod) => pm.name === name);
-          if (!existing) {
-            this.deps.paymentMethodService.create({ name, type: 'cash' });
-            paymentMethodsImported++;
-          }
-        } else {
-          const existing = this.deps.paymentMethodService
-            .getAll()
-            .find((pm: PaymentMethod) => pm.name === name);
-          if (!existing) {
-            this.deps.paymentMethodService.create({ name, type: 'debit' });
-            paymentMethodsImported++;
-          }
-        }
-      }
+      const result = this.processImportSettings(
+        allData[0] || [],
+        allData[1] || [],
+        allData[2] || []
+      );
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', '설정 가져오기 완료', {
-        categories: categoriesImported,
-        subCategories: subCategoriesImported,
-        paymentMethods: paymentMethodsImported,
-      });
+      return this.createSyncResult('success', '설정 가져오기 완료', result);
     } catch (error) {
       return this.createSyncResult(
         'error',
@@ -478,7 +446,179 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
   }
 
+  // ========== Private: Import Processing ==========
+
+  private processImportSettings(
+    categoryRows: (string | number | null)[][],
+    creditRows: (string | number | null)[][],
+    debitRows: (string | number | null)[][]
+  ): { categories: number; subCategories: number; paymentMethods: number } {
+    let categoriesImported = 0;
+    let subCategoriesImported = 0;
+    let paymentMethodsImported = 0;
+
+    for (const row of categoryRows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+
+      const categoryName = String(row[0]);
+      let category = this.deps.categoryService
+        .getByType('expense')
+        .find((c: Category) => c.name === categoryName);
+
+      if (!category) {
+        category = this.deps.categoryService.create({
+          name: categoryName,
+          type: 'expense',
+        });
+        categoriesImported++;
+      }
+
+      for (let i = 1; i < row.length; i++) {
+        const cellValue = row[i];
+        if (!cellValue) continue;
+
+        const subName = String(cellValue);
+        const parsed = this.parseSubCategoryName(subName);
+
+        const existingSub = this.deps.subCategoryService
+          .getByCategoryId(category.id)
+          .find((sc: SubCategory) => sc.name === parsed.name);
+
+        if (!existingSub) {
+          this.deps.subCategoryService.create({
+            categoryId: category.id,
+            name: parsed.name,
+            icon: parsed.icon,
+          });
+          subCategoriesImported++;
+        }
+      }
+    }
+
+    for (const row of creditRows) {
+      if (!row || !row[0]) continue;
+      const name = String(row[0]);
+      const existing = this.deps.paymentMethodService
+        .getAll()
+        .find((pm: PaymentMethod) => pm.name === name);
+      if (!existing) {
+        this.deps.paymentMethodService.create({ name, type: 'credit' });
+        paymentMethodsImported++;
+      }
+    }
+
+    for (const row of debitRows) {
+      if (!row || !row[0]) continue;
+      const name = String(row[0]);
+      if (name === '현금') {
+        const existing = this.deps.paymentMethodService
+          .getAll()
+          .find((pm: PaymentMethod) => pm.name === name);
+        if (!existing) {
+          this.deps.paymentMethodService.create({ name, type: 'cash' });
+          paymentMethodsImported++;
+        }
+      } else {
+        const existing = this.deps.paymentMethodService
+          .getAll()
+          .find((pm: PaymentMethod) => pm.name === name);
+        if (!existing) {
+          this.deps.paymentMethodService.create({ name, type: 'debit' });
+          paymentMethodsImported++;
+        }
+      }
+    }
+
+    return { categories: categoriesImported, subCategories: subCategoriesImported, paymentMethods: paymentMethodsImported };
+  }
+
+  private async processImportTransactions(
+    year: number,
+    month: number,
+    expenseRows: (string | number | null)[][],
+    incomeRows: (string | number | null)[][]
+  ): Promise<number> {
+    // 기존 해당 월 거래 삭제
+    const existingTransactions = this.deps.transactionService.getAll().filter((t) => {
+      const d = t.date;
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    });
+    for (const t of existingTransactions) {
+      this.deps.transactionService.delete(t.id);
+    }
+
+    let importedCount = 0;
+
+    for (const row of expenseRows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const transaction = await this.expenseRowToTransaction(row, year, month);
+      if (transaction) {
+        this.deps.transactionService.create(transaction);
+        importedCount++;
+      }
+    }
+
+    for (const row of incomeRows) {
+      if (!row || row.length === 0 || !row[0]) continue;
+      const transaction = await this.incomeRowToTransaction(row, year, month);
+      if (transaction) {
+        this.deps.transactionService.create(transaction);
+        importedCount++;
+      }
+    }
+
+    return importedCount;
+  }
+
   // ========== Private: API Methods ==========
+
+  private async batchRead(
+    ranges: string[]
+  ): Promise<(string | number | null)[][][]> {
+    const token = await this.deps.getAccessToken();
+    if (!token) throw new Error('인증이 필요합니다');
+
+    const params = ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join('&');
+    const url = `${SHEETS_API.BASE_URL}/${this.spreadsheetId}/values:batchGet?${params}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('인증이 만료되었습니다');
+      throw new Error(`API 오류: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (data.valueRanges || []).map(
+      (vr: { values?: (string | number | null)[][] }) => vr.values || []
+    );
+  }
+
+  private async batchWrite(
+    data: { range: string; values: (string | number | null)[][] }[]
+  ): Promise<void> {
+    const token = await this.deps.getAccessToken();
+    if (!token) throw new Error('인증이 필요합니다');
+
+    const url = `${SHEETS_API.BASE_URL}/${this.spreadsheetId}/values:batchUpdate`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        valueInputOption: 'USER_ENTERED',
+        data: data.map((d) => ({ range: d.range, values: d.values })),
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('인증이 만료되었습니다');
+      throw new Error(`API 오류: ${response.status}`);
+    }
+  }
 
   async readRange(range: string): Promise<(string | number | null)[][]> {
     const token = await this.deps.getAccessToken();

@@ -38,6 +38,13 @@ function createErrorResponse(status: number = 400) {
   return { ok: false, status, json: async () => ({ error: 'error' }) };
 }
 
+/** batchGet 응답 생성 */
+function createBatchGetResponse(valuesArrays: (string | number | null)[][][]) {
+  return createSuccessResponse({
+    valueRanges: valuesArrays.map((values) => ({ values })),
+  });
+}
+
 const MOCK_TOKEN = 'mock-access-token';
 const MOCK_SPREADSHEET_ID = 'spreadsheet-123';
 
@@ -144,19 +151,27 @@ describe('GoogleSheetsService', () => {
 
   // ========== Export (8) ==========
   describe('Export', () => {
-    it('exportAll - 전체 내보내기 성공', async () => {
-      // exportSettings: clear categories, clear payment methods
-      // exportTransactions: clear expense, clear income
+    it('exportAll - batchUpdate로 1번 호출', async () => {
+      mockCategoryService.getByType.mockReturnValue([
+        { id: 'cat1', name: '식비', type: 'expense' },
+      ]);
       mockFetch.mockResolvedValue(createSuccessResponse());
 
       const result = await service.exportAll();
 
       expect(result.status).toBe('success');
       expect(result.message).toContain('전체 내보내기 완료');
+
+      // batchUpdate는 POST + batchUpdate URL
+      const batchCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
+      );
+      expect(batchCalls).toHaveLength(1); // 설정+거래 전부 1번 호출
     });
 
     it('exportTransactions - 지출 거래 올바른 행 변환', async () => {
-      const mockDate = new Date(2026, 2, 15); // 2026년 3월 15일
+      const mockDate = new Date(2026, 2, 15);
       mockTransactionService.getAll.mockReturnValue([
         {
           id: 't1',
@@ -180,23 +195,22 @@ describe('GoogleSheetsService', () => {
         { id: 'pm1', name: '신한카드' },
       ]);
 
-      // clear expense + write expense + clear income (no income write)
       mockFetch.mockResolvedValue(createSuccessResponse());
 
       const result = await service.exportTransactions(2026, 3);
 
       expect(result.status).toBe('success');
 
-      // writeRange 호출 확인 - PUT 요청 찾기
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
+      // batchWrite POST 호출 확인
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
       );
-      expect(putCalls.length).toBeGreaterThanOrEqual(1);
+      expect(postCalls.length).toBe(1);
 
-      const [, putOptions] = putCalls[0];
-      const body = JSON.parse((putOptions as RequestInit).body as string);
-      // [day, categoryName, subCategoryIcon+Name, amount, paymentMethodName, memo]
-      expect(body.values[0]).toEqual([
+      const body = JSON.parse((postCalls[0][1] as RequestInit).body as string);
+      // data[0]은 expense range
+      expect(body.data[0].values[0]).toEqual([
         15,
         '식비',
         '🍔외식',
@@ -207,7 +221,7 @@ describe('GoogleSheetsService', () => {
     });
 
     it('exportTransactions - categoryId → name 변환', async () => {
-      const mockDate = new Date(2026, 0, 10); // 2026년 1월 10일
+      const mockDate = new Date(2026, 0, 10);
       mockTransactionService.getAll.mockReturnValue([
         {
           id: 't1',
@@ -230,35 +244,20 @@ describe('GoogleSheetsService', () => {
 
       await service.exportTransactions(2026, 1);
 
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
       );
-      expect(putCalls.length).toBeGreaterThanOrEqual(1);
-
-      const body = JSON.parse((putCalls[0][1] as RequestInit).body as string);
-      expect(body.values[0][1]).toBe('문화생활');
+      const body = JSON.parse((postCalls[0][1] as RequestInit).body as string);
+      expect(body.data[0].values[0][1]).toBe('문화생활');
     });
 
     it('exportTransactions - 수입 거래 카테고리별 합산', async () => {
       const date1 = new Date(2026, 0, 5);
       const date2 = new Date(2026, 0, 20);
       mockTransactionService.getAll.mockReturnValue([
-        {
-          id: 't1',
-          type: 'income',
-          amount: 3000000,
-          date: date1,
-          categoryId: 'icat1',
-          paymentMethodId: 'pm1',
-        },
-        {
-          id: 't2',
-          type: 'income',
-          amount: 500000,
-          date: date2,
-          categoryId: 'icat1',
-          paymentMethodId: 'pm1',
-        },
+        { id: 't1', type: 'income', amount: 3000000, date: date1, categoryId: 'icat1', paymentMethodId: 'pm1' },
+        { id: 't2', type: 'income', amount: 500000, date: date2, categoryId: 'icat1', paymentMethodId: 'pm1' },
       ]);
       mockCategoryService.getAll.mockReturnValue([
         { id: 'icat1', name: '급여', type: 'income' },
@@ -272,37 +271,36 @@ describe('GoogleSheetsService', () => {
 
       await service.exportTransactions(2026, 1);
 
-      // 수입 write 확인 - income range에 대한 PUT
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
       );
-      // 수입 PUT 호출에서 합산 확인
-      const incomeWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('C14')
+      const body = JSON.parse((postCalls[0][1] as RequestInit).body as string);
+      // data[1]은 income range
+      const incomeData = body.data.find((d: any) =>
+        d.range.includes('C14')
       );
-      expect(incomeWrite).toBeDefined();
-
-      const body = JSON.parse((incomeWrite![1] as RequestInit).body as string);
-      // 급여 카테고리에 3,500,000원 합산
-      expect(body.values[0][0]).toBe('급여');
-      expect(body.values[0][1]).toBe(3500000);
+      expect(incomeData).toBeDefined();
+      expect(incomeData.values[0][0]).toBe('급여');
+      expect(incomeData.values[0][1]).toBe(3500000);
     });
 
-    it('exportTransactions - 빈 월 처리', async () => {
+    it('exportTransactions - 빈 월도 패딩으로 batchWrite 호출', async () => {
       mockTransactionService.getAll.mockReturnValue([]);
       mockFetch.mockResolvedValue(createSuccessResponse());
 
       const result = await service.exportTransactions(2026, 6);
 
       expect(result.status).toBe('success');
-      // clear는 호출되지만 write는 호출 안 됨
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
+      // batchWrite는 항상 호출됨 (빈 행 패딩)
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
       );
-      expect(putCalls).toHaveLength(0);
+      expect(postCalls).toHaveLength(1);
     });
 
-    it('exportSettings - 카테고리 매트릭스 변환', async () => {
+    it('exportSettings - batchUpdate로 카테고리+결제수단 1번 호출', async () => {
       mockCategoryService.getByType.mockReturnValue([
         { id: 'cat1', name: '식비', type: 'expense' },
       ]);
@@ -310,7 +308,9 @@ describe('GoogleSheetsService', () => {
         { id: 'sub1', categoryId: 'cat1', name: '외식', icon: '🍔' },
         { id: 'sub2', categoryId: 'cat1', name: '카페', icon: '☕' },
       ]);
-      mockPaymentMethodService.getAll.mockReturnValue([]);
+      mockPaymentMethodService.getAll.mockReturnValue([
+        { id: 'pm1', name: '신한카드', type: 'credit' },
+      ]);
 
       mockFetch.mockResolvedValue(createSuccessResponse());
 
@@ -318,59 +318,29 @@ describe('GoogleSheetsService', () => {
 
       expect(result.status).toBe('success');
 
-      // 카테고리 매트릭스 PUT 확인
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, opts]: [string, RequestInit]) =>
+          opts.method === 'POST' && url.includes('batchUpdate')
       );
-      expect(putCalls.length).toBeGreaterThanOrEqual(1);
+      expect(postCalls).toHaveLength(1);
 
-      const categoryWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('E41')
-      );
-      expect(categoryWrite).toBeDefined();
+      const body = JSON.parse((postCalls[0][1] as RequestInit).body as string);
+      // 3개 범위: categories, credit, debit
+      expect(body.data).toHaveLength(3);
 
-      const body = JSON.parse(
-        (categoryWrite![1] as RequestInit).body as string
-      );
-      // [대분류명, 소분류1, 소분류2]
-      expect(body.values[0]).toEqual(['식비', '🍔외식', '☕카페']);
+      const categoryData = body.data.find((d: any) => d.range.includes('E41'));
+      expect(categoryData.values[0]).toEqual(['식비', '🍔외식', '☕카페']);
+      expect(categoryData.values.length).toBe(10); // 패딩 포함
     });
 
-    it('exportSettings - 결제수단 변환', async () => {
-      mockCategoryService.getByType.mockReturnValue([
-        { id: 'cat1', name: '식비', type: 'expense' },
-      ]);
-      mockSubCategoryService.getAll.mockReturnValue([]);
-      mockPaymentMethodService.getAll.mockReturnValue([
-        { id: 'pm1', name: '신한카드', type: 'credit' },
-        { id: 'pm2', name: '현금', type: 'cash' },
-      ]);
+    it('exportSettings - 카테고리 비어있으면 에러', async () => {
+      mockCategoryService.getByType.mockReturnValue([]);
 
-      mockFetch.mockResolvedValue(createSuccessResponse());
+      const result = await service.exportSettings();
 
-      await service.exportSettings();
-
-      const putCalls = mockFetch.mock.calls.filter(
-        ([, opts]: [string, RequestInit]) => opts.method === 'PUT'
-      );
-
-      // 신용카드는 PAYMENT_CREDIT 범위에 기록
-      const creditWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('B12')
-      );
-      expect(creditWrite).toBeDefined();
-      const creditBody = JSON.parse((creditWrite![1] as RequestInit).body as string);
-      expect(creditBody.values[0]).toEqual(['신한카드']);
-      expect(creditBody.values.length).toBe(5); // 패딩 포함
-
-      // 현금은 PAYMENT_DEBIT 범위에 기록
-      const debitWrite = putCalls.find(([url]: [string]) =>
-        decodeURIComponent(url).includes('C12')
-      );
-      expect(debitWrite).toBeDefined();
-      const debitBody = JSON.parse((debitWrite![1] as RequestInit).body as string);
-      expect(debitBody.values[0]).toEqual(['현금']);
-      expect(debitBody.values.length).toBe(5); // 패딩 포함
+      expect(result.status).toBe('error');
+      expect(result.message).toContain('카테고리가 없습니다');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('exportAll - 인증 없으면 에러', async () => {
@@ -382,20 +352,25 @@ describe('GoogleSheetsService', () => {
 
   // ========== Import (8) ==========
   describe('Import', () => {
-    it('importAll - 전체 가져오기 성공', async () => {
-      // readRange calls will return empty
-      mockFetch.mockResolvedValue(createSuccessResponse({ values: [] }));
+    it('importAll - batchGet으로 1번 호출', async () => {
+      // batchGet: 3(설정) + 24(12개월 x 2) = 27개 범위를 1번에 읽기
+      const emptyRanges = Array(27).fill([]);
+      mockFetch.mockResolvedValueOnce(createBatchGetResponse(emptyRanges));
 
       const result = await service.importAll();
 
       expect(result.status).toBe('success');
       expect(result.message).toContain('전체 가져오기 완료');
+
+      // batchGet은 GET 호출 1번
+      const getCalls = mockFetch.mock.calls.filter(
+        ([url]: [string]) => url.includes('batchGet')
+      );
+      expect(getCalls).toHaveLength(1);
     });
 
     it('importTransactions - 시트 행 → Transaction 변환', async () => {
-      const expenseData = {
-        values: [[15, '식비', '🍔외식', 15000, '신한카드', '점심']],
-      };
+      const expenseValues = [[15, '식비', '🍔외식', 15000, '신한카드', '점심']];
 
       mockCategoryService.getByType.mockReturnValue([
         { id: 'cat1', name: '식비', type: 'expense' },
@@ -407,10 +382,10 @@ describe('GoogleSheetsService', () => {
         { id: 'pm1', name: '신한카드' },
       ]);
 
-      // First call: expense read, second: income read
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse(expenseData))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
+      // batchGet: [expense, income]
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([expenseValues, []])
+      );
 
       const result = await service.importTransactions(2026, 3);
 
@@ -427,10 +402,6 @@ describe('GoogleSheetsService', () => {
     });
 
     it('importTransactions - 대분류 이름 → categoryId 매칭', async () => {
-      const expenseData = {
-        values: [[10, '교통', '', 3000, '현금', '']],
-      };
-
       mockCategoryService.getByType.mockReturnValue([
         { id: 'cat1', name: '식비', type: 'expense' },
         { id: 'cat2', name: '교통', type: 'expense' },
@@ -440,9 +411,9 @@ describe('GoogleSheetsService', () => {
         { id: 'pm1', name: '현금' },
       ]);
 
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse(expenseData))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([[[10, '교통', '', 3000, '현금', '']], []])
+      );
 
       await service.importTransactions(2026, 1);
 
@@ -451,11 +422,6 @@ describe('GoogleSheetsService', () => {
     });
 
     it('importTransactions - 없는 카테고리 자동 생성', async () => {
-      const expenseData = {
-        values: [[5, '새카테고리', '', 20000, '현금', '']],
-      };
-
-      // 기존 카테고리에 없음
       mockCategoryService.getByType.mockReturnValue([]);
       mockCategoryService.create.mockReturnValue({
         id: 'new-cat',
@@ -469,9 +435,9 @@ describe('GoogleSheetsService', () => {
         name: '현금',
       });
 
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse(expenseData))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([[[5, '새카테고리', '', 20000, '현금', '']], []])
+      );
 
       await service.importTransactions(2026, 1);
 
@@ -485,14 +451,9 @@ describe('GoogleSheetsService', () => {
     });
 
     it('importTransactions - 이모지 포함 소분류 파싱', async () => {
-      const expenseData = {
-        values: [[7, '식비', '🍕피자', 25000, '카드', '']],
-      };
-
       mockCategoryService.getByType.mockReturnValue([
         { id: 'cat1', name: '식비', type: 'expense' },
       ]);
-      // 소분류 없음 → 자동 생성
       mockSubCategoryService.getByCategoryId.mockReturnValue([]);
       mockSubCategoryService.create.mockReturnValue({
         id: 'new-sub',
@@ -504,9 +465,9 @@ describe('GoogleSheetsService', () => {
         { id: 'pm1', name: '카드' },
       ]);
 
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse(expenseData))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([[[7, '식비', '🍕피자', 25000, '카드', '']], []])
+      );
 
       await service.importTransactions(2026, 1);
 
@@ -520,12 +481,7 @@ describe('GoogleSheetsService', () => {
       expect(createArg.subCategoryId).toBe('new-sub');
     });
 
-    it('importSettings - 카테고리 매트릭스 파싱', async () => {
-      const categoryData = {
-        values: [['식비', '🍔외식', '☕카페']],
-      };
-
-      // 기존 카테고리 없음
+    it('importSettings - batchGet으로 카테고리+결제수단 1번 읽기', async () => {
       mockCategoryService.getByType.mockReturnValue([]);
       mockCategoryService.create.mockReturnValue({
         id: 'new-cat',
@@ -538,11 +494,14 @@ describe('GoogleSheetsService', () => {
         ...input,
       }));
 
-      // categories, then credit cards, then debit/cash
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse(categoryData))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }))
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }));
+      // batchGet: [categories, credit, debit]
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([
+          [['식비', '🍔외식', '☕카페']], // categories
+          [],                              // credit cards
+          [],                              // debit cards
+        ])
+      );
 
       const result = await service.importSettings();
 
@@ -552,22 +511,9 @@ describe('GoogleSheetsService', () => {
         type: 'expense',
       });
       expect(mockSubCategoryService.create).toHaveBeenCalledTimes(2);
-      expect(mockSubCategoryService.create).toHaveBeenCalledWith({
-        categoryId: 'new-cat',
-        name: '외식',
-        icon: '🍔',
-      });
-      expect(mockSubCategoryService.create).toHaveBeenCalledWith({
-        categoryId: 'new-cat',
-        name: '카페',
-        icon: '☕',
-      });
     });
 
     it('importSettings - 결제수단 파싱 (열별 그룹)', async () => {
-      const creditData = { values: [['신한카드']] };
-      const debitData = { values: [['현대카드'], ['현금']] };
-
       mockCategoryService.getByType.mockReturnValue([]);
       mockPaymentMethodService.getAll.mockReturnValue([]);
       mockPaymentMethodService.create.mockImplementation((input) => ({
@@ -575,11 +521,14 @@ describe('GoogleSheetsService', () => {
         ...input,
       }));
 
-      // categories (empty), then credit, then debit
-      mockFetch
-        .mockResolvedValueOnce(createSuccessResponse({ values: [] }))
-        .mockResolvedValueOnce(createSuccessResponse(creditData))
-        .mockResolvedValueOnce(createSuccessResponse(debitData));
+      // batchGet: [categories (empty), credit, debit]
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([
+          [],                        // categories
+          [['신한카드']],             // credit
+          [['현대카드'], ['현금']],   // debit
+        ])
+      );
 
       const result = await service.importSettings();
 
