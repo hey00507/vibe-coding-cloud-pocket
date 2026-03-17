@@ -6,6 +6,7 @@ import { SeedService } from './SeedService';
 import { IncomeTargetService } from './IncomeTargetService';
 import { SavingsService } from './SavingsService';
 import { BankAccountService } from './BankAccountService';
+import { BudgetService } from './BudgetService';
 import { GoogleAuthService } from './GoogleAuthService';
 import { GoogleSheetsService } from './GoogleSheetsService';
 
@@ -18,6 +19,7 @@ export const seedService = new SeedService();
 export const incomeTargetService = new IncomeTargetService();
 export const savingsService = new SavingsService();
 export const bankAccountService = new BankAccountService();
+export const budgetService = new BudgetService();
 export const googleAuthService = new GoogleAuthService();
 export const googleSheetsService = new GoogleSheetsService({
   getAccessToken: () => googleAuthService.getAccessToken(),

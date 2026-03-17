@@ -8,6 +8,7 @@ import {
   incomeTargetService,
   savingsService,
   bankAccountService,
+  budgetService,
   seedService,
 } from './ServiceRegistry';
 
@@ -53,6 +54,11 @@ export async function initializeApp(): Promise<void> {
       storageService,
       STORAGE_KEYS.BANK_ACCOUNTS,
       STORAGE_KEYS.BANK_ACCOUNTS_ID_COUNTER
+    ),
+    budgetService.hydrate(
+      storageService,
+      STORAGE_KEYS.BUDGETS,
+      STORAGE_KEYS.BUDGETS_ID_COUNTER
     ),
   ]);
 

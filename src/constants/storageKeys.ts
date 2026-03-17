@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   SAVINGS_ID_COUNTER: '@cloudpocket/savings/idCounter',
   BANK_ACCOUNTS: '@cloudpocket/bankAccounts',
   BANK_ACCOUNTS_ID_COUNTER: '@cloudpocket/bankAccounts/idCounter',
+  BUDGETS: '@cloudpocket/budgets',
+  BUDGETS_ID_COUNTER: '@cloudpocket/budgets/idCounter',
   SEEDED: '@cloudpocket/seeded',
   THEME_MODE: '@cloudpocket/themeMode',
   GOOGLE_AUTH_TOKENS: '@cloudpocket/googleAuthTokens',

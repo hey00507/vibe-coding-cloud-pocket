@@ -169,6 +169,31 @@ export interface MonthlyCategoryMatrix {
   total: number;
 }
 
+// 예산
+export type BudgetStatus = 'safe' | 'warning' | 'over';
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  monthlyAmount: number;
+  year: number;
+  month: number;
+}
+
+export type CreateBudgetInput = Omit<Budget, 'id'>;
+export type UpdateBudgetInput = Partial<Omit<Budget, 'id'>>;
+
+// 예산 소진 현황
+export interface BudgetProgress {
+  categoryId: string;
+  categoryName: string;
+  budget: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  status: BudgetStatus;
+}
+
 // 월간 상세 요약 (확장)
 export interface EnhancedMonthlySummary extends PeriodSummary {
   totalSavings: number;
