@@ -353,8 +353,11 @@ describe('GoogleSheetsService', () => {
   // ========== Import (8) ==========
   describe('Import', () => {
     it('importAll - batchGet으로 1번 호출', async () => {
-      // batchGet: 3(설정) + 24(12개월 x 2) = 27개 범위를 1번에 읽기
-      const emptyRanges = Array(27).fill([]);
+      // batchGet: 1(연도) + 3(설정) + 24(12개월 x 2) = 28개 범위를 1번에 읽기
+      const emptyRanges: (string | number | null)[][][] = [
+        [[2026]],        // 연도 셀
+        ...Array(27).fill([]),  // 설정 + 거래
+      ];
       mockFetch.mockResolvedValueOnce(createBatchGetResponse(emptyRanges));
 
       const result = await service.importAll();

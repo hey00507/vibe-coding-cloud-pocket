@@ -94,9 +94,6 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
 
     try {
-      const now = new Date();
-      const year = now.getFullYear();
-
       // 설정 데이터 준비
       const categories = this.deps.categoryService.getByType('expense');
       const subCategories = this.deps.subCategoryService.getAll();
@@ -133,9 +130,10 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         .map((pm) => [pm.name] as (string | number | null)[]);
       while (debitAndCash.length < maxPaymentRows) debitAndCash.push(['']);
 
-      // 전체 12개월 거래 데이터 준비
+      // 거래 데이터에서 연도 자동 감지 (시트가 해당 연도용이므로)
       const allTransactions = this.deps.transactionService.getAll();
       const allCategories = this.deps.categoryService.getAll();
+      const year = this.detectYear(allTransactions);
       let totalExported = 0;
 
       // batchUpdate용 데이터 배열 구성 (설정 + 12개월 거래 = 1번의 API 호출)
@@ -158,9 +156,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
           .filter((t) => t.type === 'expense')
           .map((t) => this.transactionToExpenseRow(t, allCategories, subCategories, paymentMethods));
 
-        // 지출 행 패딩 (기존 데이터 덮어쓰기 위해 빈 행 추가)
-        const maxExpenseRows = 50;
-        while (expenseRows.length < maxExpenseRows) {
+        // 동적 패딩: 실제 데이터 + 여유 10행 (최소 20행, 기존 데이터 덮어쓰기용)
+        const paddingTarget = Math.max(expenseRows.length + 10, 20);
+        while (expenseRows.length < paddingTarget) {
           expenseRows.push(['', '', '', '', '', '']);
         }
         batchData.push({
@@ -189,7 +187,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       await this.batchWrite(batchData);
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', `전체 내보내기 완료 (${totalExported}건)`, {
+      return this.createSyncResult('success', `전체 내보내기 완료 (${year}년 ${totalExported}건)`, {
         transactions: totalExported,
       });
     } catch (error) {
@@ -227,9 +225,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       const monthName = SHEET_NAMES.MONTHS[month - 1];
 
-      // 패딩 후 batchWrite (1번 호출)
-      const maxExpenseRows = 50;
-      while (expenseRows.length < maxExpenseRows) expenseRows.push(['', '', '', '', '', '']);
+      // 동적 패딩 후 batchWrite (1번 호출)
+      const paddingTarget = Math.max(expenseRows.length + 10, 20);
+      while (expenseRows.length < paddingTarget) expenseRows.push(['', '', '', '', '', '']);
       const maxIncomeRows = 5;
       while (incomeRows.length < maxIncomeRows) incomeRows.push(['', '', '']);
 
@@ -324,11 +322,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     }
 
     try {
-      const now = new Date();
-      const year = now.getFullYear();
-
-      // 1번의 batchGet으로 설정 + 12개월 거래를 모두 읽기
+      // 1번의 batchGet으로 연도 + 설정 + 12개월 거래를 모두 읽기
       const ranges: string[] = [
+        "'(필수)설정 시트'!B2",  // 연도 셀
         CELL_RANGES.CATEGORIES,
         CELL_RANGES.PAYMENT_CREDIT,
         CELL_RANGES.PAYMENT_DEBIT,
@@ -341,17 +337,21 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       const allData = await this.batchRead(ranges);
 
-      // 설정 처리 (인덱스 0, 1, 2)
+      // 연도 추출 (인덱스 0)
+      const yearData = allData[0] || [];
+      const year = yearData[0]?.[0] ? Number(yearData[0][0]) : new Date().getFullYear();
+
+      // 설정 처리 (인덱스 1, 2, 3)
       const settingsResult = this.processImportSettings(
-        allData[0] || [],
         allData[1] || [],
-        allData[2] || []
+        allData[2] || [],
+        allData[3] || []
       );
 
-      // 거래 처리 (인덱스 3부터 2개씩: expense, income)
+      // 거래 처리 (인덱스 4부터 2개씩: expense, income)
       let totalImported = 0;
       for (let month = 1; month <= 12; month++) {
-        const dataIndex = 3 + (month - 1) * 2;
+        const dataIndex = 4 + (month - 1) * 2;
         const expenseRows = allData[dataIndex] || [];
         const incomeRows = allData[dataIndex + 1] || [];
 
@@ -366,7 +366,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', `전체 가져오기 완료 (${totalImported}건)`, {
+      return this.createSyncResult('success', `전체 가져오기 완료 (${year}년 ${totalImported}건)`, {
         transactions: totalImported,
         ...settingsResult,
       });
@@ -896,6 +896,31 @@ export class GoogleSheetsService implements IGoogleSheetsService {
   }
 
   // ========== Private: Helpers ==========
+
+  /**
+   * 거래 데이터에서 가장 많이 사용된 연도를 감지
+   * 거래가 없으면 현재 연도 반환
+   */
+  private detectYear(transactions: Transaction[]): number {
+    if (transactions.length === 0) return new Date().getFullYear();
+
+    const yearCounts = new Map<number, number>();
+    for (const t of transactions) {
+      const y = t.date.getFullYear();
+      yearCounts.set(y, (yearCounts.get(y) || 0) + 1);
+    }
+
+    let maxYear = new Date().getFullYear();
+    let maxCount = 0;
+    yearCounts.forEach((count, year) => {
+      if (count > maxCount) {
+        maxCount = count;
+        maxYear = year;
+      }
+    });
+
+    return maxYear;
+  }
 
   private async updateLastSyncTime(): Promise<void> {
     this.lastSyncTime = new Date();
