@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Text, View, ActivityIndicator, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { RootTabParamList } from './src/types/navigation';
 
 import HomeScreen from './src/views/screens/HomeScreen';
@@ -64,6 +64,7 @@ function AppContent() {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <NavigationContainer theme={navigationTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Tab.Navigator
@@ -124,6 +125,7 @@ function AppContent() {
         />
       </Tab.Navigator>
     </NavigationContainer>
+    </TouchableWithoutFeedback>
   );
 }
 
