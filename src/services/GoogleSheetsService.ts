@@ -586,7 +586,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
     if (!response.ok) {
       if (response.status === 401) throw new Error('인증이 만료되었습니다');
-      throw new Error(`API 오류: ${response.status}`);
+      const errorBody = await response.json().catch(() => ({}));
+      const errorMsg = errorBody?.error?.message || JSON.stringify(errorBody);
+      throw new Error(`batchGet API 오류 ${response.status}: ${errorMsg}`);
     }
 
     const data = await response.json();
@@ -616,7 +618,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
     if (!response.ok) {
       if (response.status === 401) throw new Error('인증이 만료되었습니다');
-      throw new Error(`API 오류: ${response.status}`);
+      const errorBody = await response.json().catch(() => ({}));
+      const errorMsg = errorBody?.error?.message || JSON.stringify(errorBody);
+      throw new Error(`batchUpdate API 오류 ${response.status}: ${errorMsg}`);
     }
   }
 
