@@ -5,8 +5,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -168,6 +170,7 @@ export default function AddTransactionScreen({
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.colors.surface }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -357,6 +360,7 @@ export default function AddTransactionScreen({
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 

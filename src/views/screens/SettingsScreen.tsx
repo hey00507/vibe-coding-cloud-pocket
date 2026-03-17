@@ -7,9 +7,14 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   Alert,
   Modal,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -704,7 +709,8 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setBudgetModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
               {editingBudgetId ? '예산 수정' : '새 예산'}
@@ -768,7 +774,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* 카테고리 추가 모달 */}
@@ -778,7 +785,8 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setCategoryModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
               새 {categoryType === 'expense' ? '지출' : '수입'} 카테고리
@@ -828,7 +836,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* 소분류 추가 모달 */}
@@ -838,7 +847,8 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setSubCategoryModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 소분류</Text>
 
@@ -886,7 +896,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* 결제수단 추가 모달 */}
@@ -896,7 +907,8 @@ export default function SettingsScreen() {
         transparent
         onRequestClose={() => setPaymentModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 결제수단</Text>
 
@@ -970,7 +982,8 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
