@@ -337,7 +337,9 @@ describe('GoogleSheetsService', () => {
     });
 
     it('exportSettings - 결제수단 변환', async () => {
-      mockCategoryService.getByType.mockReturnValue([]);
+      mockCategoryService.getByType.mockReturnValue([
+        { id: 'cat1', name: '식비', type: 'expense' },
+      ]);
       mockSubCategoryService.getAll.mockReturnValue([]);
       mockPaymentMethodService.getAll.mockReturnValue([
         { id: 'pm1', name: '신한카드', type: 'credit' },
