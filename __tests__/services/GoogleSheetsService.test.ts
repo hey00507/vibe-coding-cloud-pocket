@@ -155,6 +155,9 @@ describe('GoogleSheetsService', () => {
       mockCategoryService.getByType.mockReturnValue([
         { id: 'cat1', name: '식비', type: 'expense' },
       ]);
+      mockPaymentMethodService.getAll.mockReturnValue([
+        { id: 'pm1', name: '신한카드', type: 'credit' },
+      ]);
       mockFetch.mockResolvedValue(createSuccessResponse());
 
       const result = await service.exportAll();
@@ -328,11 +331,11 @@ describe('GoogleSheetsService', () => {
       // 3개 범위: categories, credit, debit
       expect(body.data).toHaveLength(3);
 
-      const categoryData = body.data.find((d: any) => d.range.includes('E41'));
-      // 각 행이 10열로 패딩됨
+      const categoryData = body.data.find((d: any) => d.range.includes('설정-카테고리'));
+      // 각 행이 16열로 패딩됨
       expect(categoryData.values[0].slice(0, 3)).toEqual(['식비', '🍔외식', '☕카페']);
-      expect(categoryData.values[0].length).toBe(10); // 열 패딩
-      expect(categoryData.values.length).toBe(10); // 행 패딩
+      expect(categoryData.values[0].length).toBe(16); // 열 패딩
+      expect(categoryData.values.length).toBe(20); // 행 패딩
     });
 
     it('exportSettings - 카테고리 비어있으면 에러', async () => {
@@ -341,7 +344,22 @@ describe('GoogleSheetsService', () => {
       const result = await service.exportSettings();
 
       expect(result.status).toBe('error');
-      expect(result.message).toContain('카테고리가 없습니다');
+      expect(result.message).toContain('카테고리');
+      expect(result.message).toContain('등록되지 않았습니다');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('exportSettings - 결제수단 비어있으면 에러', async () => {
+      mockCategoryService.getByType.mockReturnValue([
+        { id: 'cat1', name: '식비', type: 'expense' },
+      ]);
+      mockPaymentMethodService.getAll.mockReturnValue([]);
+
+      const result = await service.exportSettings();
+
+      expect(result.status).toBe('error');
+      expect(result.message).toContain('결제수단');
+      expect(result.message).toContain('등록되지 않았습니다');
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -355,9 +373,8 @@ describe('GoogleSheetsService', () => {
   // ========== Import (8) ==========
   describe('Import', () => {
     it('importAll - batchGet으로 1번 호출', async () => {
-      // batchGet: 1(연도) + 3(설정) + 24(12개월 x 2) = 28개 범위를 1번에 읽기
+      // batchGet: 3(설정) + 24(12개월 x 2) = 27개 범위를 1번에 읽기
       const emptyRanges: (string | number | null)[][][] = [
-        [[2026]],        // 연도 셀
         ...Array(27).fill([]),  // 설정 + 거래
       ];
       mockFetch.mockResolvedValueOnce(createBatchGetResponse(emptyRanges));
@@ -488,10 +505,11 @@ describe('GoogleSheetsService', () => {
 
     it('importSettings - batchGet으로 카테고리+결제수단 1번 읽기', async () => {
       mockCategoryService.getByType.mockReturnValue([]);
-      mockCategoryService.create.mockReturnValue({
-        id: 'new-cat',
-        name: '식비',
-        type: 'expense',
+      const createdCat = { id: 'new-cat', name: '식비', type: 'expense' };
+      mockCategoryService.create.mockImplementation(() => {
+        // create 후 getByType이 반환하도록
+        mockCategoryService.getByType.mockReturnValue([createdCat]);
+        return createdCat;
       });
       mockSubCategoryService.getByCategoryId.mockReturnValue([]);
       mockSubCategoryService.create.mockImplementation((input) => ({
@@ -511,6 +529,8 @@ describe('GoogleSheetsService', () => {
       const result = await service.importSettings();
 
       expect(result.status).toBe('success');
+      expect(result.message).toContain('결제수단');
+      expect(result.message).toContain('비어있습니다');
       expect(mockCategoryService.create).toHaveBeenCalledWith({
         name: '식비',
         type: 'expense',
@@ -521,10 +541,13 @@ describe('GoogleSheetsService', () => {
     it('importSettings - 결제수단 파싱 (열별 그룹)', async () => {
       mockCategoryService.getByType.mockReturnValue([]);
       mockPaymentMethodService.getAll.mockReturnValue([]);
-      mockPaymentMethodService.create.mockImplementation((input) => ({
-        id: `pm-${input.name}`,
-        ...input,
-      }));
+      mockPaymentMethodService.create.mockImplementation((input) => {
+        const created = { id: `pm-${input.name}`, ...input };
+        // create 후 getAll이 반환하도록 누적
+        const current = mockPaymentMethodService.getAll();
+        mockPaymentMethodService.getAll.mockReturnValue([...current, created]);
+        return created;
+      });
 
       // batchGet: [categories (empty), credit, debit]
       mockFetch.mockResolvedValueOnce(
@@ -538,6 +561,8 @@ describe('GoogleSheetsService', () => {
       const result = await service.importSettings();
 
       expect(result.status).toBe('success');
+      expect(result.message).toContain('카테고리');
+      expect(result.message).toContain('비어있습니다');
       expect(mockPaymentMethodService.create).toHaveBeenCalledTimes(3);
       expect(mockPaymentMethodService.create).toHaveBeenCalledWith({
         name: '신한카드',
@@ -551,6 +576,23 @@ describe('GoogleSheetsService', () => {
         name: '현금',
         type: 'cash',
       });
+    });
+
+    it('importSettings - 모두 비어있으면 안내 메시지', async () => {
+      mockCategoryService.getByType.mockReturnValue([]);
+      mockPaymentMethodService.getAll.mockReturnValue([]);
+
+      mockFetch.mockResolvedValueOnce(
+        createBatchGetResponse([[], [], []])
+      );
+
+      const result = await service.importSettings();
+
+      expect(result.status).toBe('success');
+      expect(result.message).toContain('변경 없음');
+      expect(result.message).toContain('카테고리');
+      expect(result.message).toContain('결제수단');
+      expect(result.message).toContain('비어있습니다');
     });
 
     it('importAll - 인증 없으면 에러', async () => {

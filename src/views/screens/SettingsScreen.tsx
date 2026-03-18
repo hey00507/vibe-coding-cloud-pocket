@@ -169,6 +169,11 @@ export default function SettingsScreen() {
   const [newSubCategoryName, setNewSubCategoryName] = useState('');
   const [newSubCategoryIcon, setNewSubCategoryIcon] = useState('');
 
+  // 편집 상태 (카테고리/소분류/결제수단 공통)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingSubCategoryId, setEditingSubCategoryId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+
   // 결제수단 상태
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -268,6 +273,14 @@ export default function SettingsScreen() {
   };
 
   // 카테고리 핸들러
+  const handleEditCategory = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setNewCategoryName(category.name);
+    setNewCategoryIcon(category.icon || '');
+    setCategoryType(category.type);
+    setCategoryModalVisible(true);
+  };
+
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) {
       Alert.alert('오류', '카테고리 이름을 입력해주세요');
@@ -275,20 +288,28 @@ export default function SettingsScreen() {
     }
 
     const categoryName = newCategoryName.trim();
-    const input: CreateCategoryInput = {
-      name: categoryName,
-      type: categoryType,
-      icon: newCategoryIcon || undefined,
-    };
 
-    categoryService.create(input);
+    if (editingCategoryId) {
+      categoryService.update(editingCategoryId, {
+        name: categoryName,
+        icon: newCategoryIcon || undefined,
+      });
+      Alert.alert('완료', `"${categoryName}" 카테고리가 수정되었습니다`);
+    } else {
+      const input: CreateCategoryInput = {
+        name: categoryName,
+        type: categoryType,
+        icon: newCategoryIcon || undefined,
+      };
+      categoryService.create(input);
+      Alert.alert('완료', `"${categoryName}" 카테고리가 생성되었습니다`);
+    }
 
+    setEditingCategoryId(null);
     setNewCategoryName('');
     setNewCategoryIcon('');
     setCategoryModalVisible(false);
     loadCategories();
-
-    Alert.alert('완료', `"${categoryName}" 카테고리가 생성되었습니다`);
   };
 
   const handleDeleteCategory = (id: string, name: string) => {
@@ -311,9 +332,18 @@ export default function SettingsScreen() {
 
   // 소분류 핸들러
   const handleOpenSubCategoryModal = (categoryId: string) => {
+    setEditingSubCategoryId(null);
     setTargetCategoryId(categoryId);
     setNewSubCategoryName('');
     setNewSubCategoryIcon('');
+    setSubCategoryModalVisible(true);
+  };
+
+  const handleEditSubCategory = (sub: SubCategory) => {
+    setEditingSubCategoryId(sub.id);
+    setTargetCategoryId(sub.categoryId);
+    setNewSubCategoryName(sub.name);
+    setNewSubCategoryIcon(sub.icon || '');
     setSubCategoryModalVisible(true);
   };
 
@@ -324,20 +354,28 @@ export default function SettingsScreen() {
     }
 
     const subName = newSubCategoryName.trim();
-    const input: CreateSubCategoryInput = {
-      categoryId: targetCategoryId,
-      name: subName,
-      icon: newSubCategoryIcon || undefined,
-    };
 
-    subCategoryService.create(input);
+    if (editingSubCategoryId) {
+      subCategoryService.update(editingSubCategoryId, {
+        name: subName,
+        icon: newSubCategoryIcon || undefined,
+      });
+      Alert.alert('완료', `"${subName}" 소분류가 수정되었습니다`);
+    } else {
+      const input: CreateSubCategoryInput = {
+        categoryId: targetCategoryId,
+        name: subName,
+        icon: newSubCategoryIcon || undefined,
+      };
+      subCategoryService.create(input);
+      Alert.alert('완료', `"${subName}" 소분류가 생성되었습니다`);
+    }
 
+    setEditingSubCategoryId(null);
     setNewSubCategoryName('');
     setNewSubCategoryIcon('');
     setSubCategoryModalVisible(false);
     loadCategories();
-
-    Alert.alert('완료', `"${subName}" 소분류가 생성되었습니다`);
   };
 
   const handleDeleteSubCategory = (id: string, name: string) => {
@@ -356,6 +394,14 @@ export default function SettingsScreen() {
   };
 
   // 결제수단 핸들러
+  const handleEditPayment = (pm: PaymentMethod) => {
+    setEditingPaymentId(pm.id);
+    setNewPaymentName(pm.name);
+    setNewPaymentIcon(pm.icon || '');
+    setNewPaymentType(pm.type || 'credit');
+    setPaymentModalVisible(true);
+  };
+
   const handleAddPayment = () => {
     if (!newPaymentName.trim()) {
       Alert.alert('오류', '결제수단 이름을 입력해주세요');
@@ -363,21 +409,30 @@ export default function SettingsScreen() {
     }
 
     const methodName = newPaymentName.trim();
-    const input: CreatePaymentMethodInput = {
-      name: methodName,
-      icon: newPaymentIcon || undefined,
-      type: newPaymentType,
-    };
 
-    paymentMethodService.create(input);
+    if (editingPaymentId) {
+      paymentMethodService.update(editingPaymentId, {
+        name: methodName,
+        icon: newPaymentIcon || undefined,
+        type: newPaymentType,
+      });
+      Alert.alert('완료', `"${methodName}" 결제수단이 수정되었습니다`);
+    } else {
+      const input: CreatePaymentMethodInput = {
+        name: methodName,
+        icon: newPaymentIcon || undefined,
+        type: newPaymentType,
+      };
+      paymentMethodService.create(input);
+      Alert.alert('완료', `"${methodName}" 결제수단이 생성되었습니다`);
+    }
 
+    setEditingPaymentId(null);
     setNewPaymentName('');
     setNewPaymentIcon('');
     setNewPaymentType('credit');
     setPaymentModalVisible(false);
     loadPaymentMethods();
-
-    Alert.alert('완료', `"${methodName}" 결제수단이 생성되었습니다`);
   };
 
   const handleDeletePayment = (id: string, name: string) => {
@@ -628,12 +683,21 @@ export default function SettingsScreen() {
           )}
         </View>
       </View>
-      <TouchableOpacity
-        style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
-        onPress={() => handleDeletePayment(item.id, item.name)}
-      >
-        <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
-      </TouchableOpacity>
+      <View style={styles.itemButtons}>
+        <TouchableOpacity
+          testID={`edit-payment-${item.id}`}
+          style={[styles.editButton, { backgroundColor: theme.colors.surface }]}
+          onPress={() => handleEditPayment(item)}
+        >
+          <Text style={[styles.editText, { color: theme.colors.primary }]}>수정</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+          onPress={() => handleDeletePayment(item.id, item.name)}
+        >
+          <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -651,7 +715,9 @@ export default function SettingsScreen() {
       subCategories={subCategoriesMap.get(item.id) || []}
       expanded={expandedCategories.has(item.id)}
       onToggle={() => toggleCategory(item.id)}
+      onEditCategory={handleEditCategory}
       onDeleteCategory={handleDeleteCategory}
+      onEditSubCategory={handleEditSubCategory}
       onDeleteSubCategory={handleDeleteSubCategory}
       onAddSubCategory={handleOpenSubCategoryModal}
     />
@@ -1248,7 +1314,7 @@ export default function SettingsScreen() {
         <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              새 {categoryType === 'expense' ? '지출' : '수입'} 카테고리
+              {editingCategoryId ? '카테고리 수정' : `새 ${categoryType === 'expense' ? '지출' : '수입'} 카테고리`}
             </Text>
 
             <TextInput
@@ -1280,6 +1346,7 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
+                  setEditingCategoryId(null);
                   setNewCategoryName('');
                   setNewCategoryIcon('');
                   setCategoryModalVisible(false);
@@ -1291,7 +1358,7 @@ export default function SettingsScreen() {
                 style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddCategory}
               >
-                <Text style={styles.confirmText}>추가</Text>
+                <Text style={styles.confirmText}>{editingCategoryId ? '수정' : '추가'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1299,7 +1366,7 @@ export default function SettingsScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* 소분류 추가 모달 */}
+      {/* 소분류 추가/수정 모달 */}
       <Modal
         visible={subCategoryModalVisible}
         animationType="slide"
@@ -1309,7 +1376,7 @@ export default function SettingsScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 소분류</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{editingSubCategoryId ? '소분류 수정' : '새 소분류'}</Text>
 
             <TextInput
               style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
@@ -1340,6 +1407,7 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
+                  setEditingSubCategoryId(null);
                   setNewSubCategoryName('');
                   setNewSubCategoryIcon('');
                   setSubCategoryModalVisible(false);
@@ -1351,7 +1419,7 @@ export default function SettingsScreen() {
                 style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddSubCategory}
               >
-                <Text style={styles.confirmText}>추가</Text>
+                <Text style={styles.confirmText}>{editingSubCategoryId ? '수정' : '추가'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1369,7 +1437,7 @@ export default function SettingsScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.modalBackground }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>새 결제수단</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{editingPaymentId ? '결제수단 수정' : '새 결제수단'}</Text>
 
             <TextInput
               style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.text }]}
@@ -1425,6 +1493,7 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.cancelButton, { backgroundColor: theme.colors.border }]}
                 onPress={() => {
+                  setEditingPaymentId(null);
                   setNewPaymentName('');
                   setNewPaymentIcon('');
                   setNewPaymentType('credit');
@@ -1437,7 +1506,7 @@ export default function SettingsScreen() {
                 style={[styles.confirmButton, { backgroundColor: theme.colors.primary }]}
                 onPress={handleAddPayment}
               >
-                <Text style={styles.confirmText}>추가</Text>
+                <Text style={styles.confirmText}>{editingPaymentId ? '수정' : '추가'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1538,6 +1607,18 @@ const styles = StyleSheet.create({
   itemType: {
     fontSize: 12,
     marginTop: 2,
+  },
+  itemButtons: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editText: {
+    fontSize: 14,
   },
   deleteButton: {
     paddingHorizontal: 12,

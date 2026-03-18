@@ -7,6 +7,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useTheme } from '../../controllers/useTheme';
 import { SyncStatus, SyncResult } from '../../types/googleSheets';
@@ -22,6 +27,16 @@ interface BackupRestoreSectionProps {
   onSpreadsheetIdChange: (id: string) => Promise<void>;
 }
 
+/**
+ * Google Sheets URL에서 스프레드시트 ID를 추출
+ * URL이 아닌 경우 원본 문자열 그대로 반환
+ */
+function extractSpreadsheetId(input: string): string {
+  const trimmed = input.trim();
+  const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : trimmed;
+}
+
 export default function BackupRestoreSection({
   isSignedIn,
   lastSync,
@@ -35,11 +50,8 @@ export default function BackupRestoreSection({
   const { theme } = useTheme();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [sheetId, setSheetId] = useState(spreadsheetId);
-
-  useEffect(() => {
-    setSheetId(spreadsheetId);
-  }, [spreadsheetId]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalInput, setModalInput] = useState('');
 
   const handleExport = useCallback(async () => {
     setSyncStatus('syncing');
@@ -88,14 +100,29 @@ export default function BackupRestoreSection({
     );
   }, [onImport]);
 
-  const handleSheetIdSave = useCallback(async () => {
-    await onSpreadsheetIdChange(sheetId);
-  }, [sheetId, onSpreadsheetIdChange]);
+  const openModal = useCallback(() => {
+    setModalInput(spreadsheetId);
+    setModalVisible(true);
+  }, [spreadsheetId]);
+
+  const handleModalSave = useCallback(async () => {
+    const id = extractSpreadsheetId(modalInput);
+    if (!id) {
+      Alert.alert('입력 오류', '스프레드시트 ID 또는 URL을 입력해주세요.');
+      return;
+    }
+    await onSpreadsheetIdChange(id);
+    setModalVisible(false);
+  }, [modalInput, onSpreadsheetIdChange]);
 
   const formatDate = (date: Date): string => {
     const d = new Date(date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
+
+  const maskedId = spreadsheetId
+    ? `${spreadsheetId.slice(0, 8)}...${spreadsheetId.slice(-4)}`
+    : '';
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.cardBackground, borderBottomColor: theme.colors.border }]}>
@@ -111,26 +138,35 @@ export default function BackupRestoreSection({
         </TouchableOpacity>
       ) : (
         <View>
-          {/* 스프레드시트 ID 입력 */}
+          {/* 스프레드시트 ID */}
           <View style={styles.sheetIdContainer}>
-            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>스프레드시트 ID</Text>
-            <View style={styles.sheetIdRow}>
-              <TextInput
-                testID="spreadsheet-id-input"
-                style={[styles.sheetIdInput, { backgroundColor: theme.colors.surface, color: theme.colors.text, borderColor: theme.colors.border }]}
-                value={sheetId}
-                onChangeText={setSheetId}
-                placeholder="스프레드시트 ID 입력"
-                placeholderTextColor={theme.colors.textTertiary}
-              />
+            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>스프레드시트</Text>
+            {spreadsheetId ? (
+              <View style={styles.sheetIdRow}>
+                <View style={[styles.sheetIdDisplay, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                  <Text testID="spreadsheet-id-display" style={[styles.sheetIdText, { color: theme.colors.text }]} numberOfLines={1}>
+                    {maskedId}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  testID="change-sheet-id-button"
+                  style={[styles.changeButton, { borderColor: theme.colors.primary }]}
+                  onPress={openModal}
+                >
+                  <Text style={[styles.changeButtonText, { color: theme.colors.primary }]}>변경</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <TouchableOpacity
-                testID="save-sheet-id-button"
-                style={[styles.saveButton, { backgroundColor: theme.colors.primary }]}
-                onPress={handleSheetIdSave}
+                testID="register-sheet-id-button"
+                style={[styles.registerButton, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+                onPress={openModal}
               >
-                <Text style={styles.saveButtonText}>저장</Text>
+                <Text style={[styles.registerButtonText, { color: theme.colors.textTertiary }]}>
+                  스프레드시트 ID 또는 URL을 등록하세요
+                </Text>
               </TouchableOpacity>
-            </View>
+            )}
           </View>
 
           {/* 마지막 동기화 시간 */}
@@ -190,6 +226,62 @@ export default function BackupRestoreSection({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* 스프레드시트 ID 입력 모달 */}
+      <Modal
+        testID="sheet-id-modal"
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlayInner}>
+              <View style={[styles.modalContent, { backgroundColor: theme.colors.cardBackground }]}>
+                <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+                  {spreadsheetId ? '스프레드시트 변경' : '스프레드시트 등록'}
+                </Text>
+                <Text style={[styles.modalDescription, { color: theme.colors.textSecondary }]}>
+                  Google Sheets URL 또는 스프레드시트 ID를 입력하세요.
+                </Text>
+                <TextInput
+                  testID="spreadsheet-id-input"
+                  style={[styles.modalInput, { backgroundColor: theme.colors.surface, color: theme.colors.text, borderColor: theme.colors.border }]}
+                  value={modalInput}
+                  onChangeText={setModalInput}
+                  placeholder="URL 또는 ID 붙여넣기"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={handleModalSave}
+                />
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    testID="modal-cancel-button"
+                    style={[styles.modalButton, { backgroundColor: theme.colors.surface }]}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={[styles.modalButtonText, { color: theme.colors.textSecondary }]}>취소</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID="modal-save-button"
+                    style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
+                    onPress={handleModalSave}
+                  >
+                    <Text style={[styles.modalButtonText, { color: '#FFF' }]}>저장</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -224,26 +316,38 @@ const styles = StyleSheet.create({
   sheetIdRow: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
   },
-  sheetIdInput: {
+  sheetIdDisplay: {
     flex: 1,
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  sheetIdText: {
     fontSize: 14,
   },
-  saveButton: {
+  changeButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
   },
-  saveButtonText: {
+  changeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
+  },
+  registerButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  registerButtonText: {
+    fontSize: 14,
   },
   lastSync: {
     fontSize: 12,
@@ -290,6 +394,52 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalOverlayInner: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  modalInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -8,7 +8,9 @@ interface CategoryGroupItemProps {
   subCategories: SubCategory[];
   expanded: boolean;
   onToggle: () => void;
+  onEditCategory: (category: Category) => void;
   onDeleteCategory: (id: string, name: string) => void;
+  onEditSubCategory: (subCategory: SubCategory) => void;
   onDeleteSubCategory: (id: string, name: string) => void;
   onAddSubCategory: (categoryId: string) => void;
 }
@@ -18,7 +20,9 @@ export default function CategoryGroupItem({
   subCategories,
   expanded,
   onToggle,
+  onEditCategory,
   onDeleteCategory,
+  onEditSubCategory,
   onDeleteSubCategory,
   onAddSubCategory,
 }: CategoryGroupItemProps) {
@@ -33,22 +37,35 @@ export default function CategoryGroupItem({
           <Text style={[styles.categoryName, { color: theme.colors.text }]}>{category.name}</Text>
           <Text style={[styles.count, { color: theme.colors.textTertiary }]}>({subCategories.length})</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
-          onPress={() => onDeleteCategory(category.id, category.name)}
-        >
-          <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            testID={`edit-category-${category.id}`}
+            style={[styles.editButton, { backgroundColor: theme.colors.surface }]}
+            onPress={() => onEditCategory(category)}
+          >
+            <Text style={[styles.editText, { color: theme.colors.primary }]}>수정</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.deleteButton, { backgroundColor: theme.colors.expenseLight }]}
+            onPress={() => onDeleteCategory(category.id, category.name)}
+          >
+            <Text style={[styles.deleteText, { color: theme.colors.expense }]}>삭제</Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
 
       {expanded && (
         <View style={styles.subList}>
           {subCategories.map((sub) => (
             <View key={sub.id} style={[styles.subItem, { borderBottomColor: theme.colors.borderLight }]}>
-              <View style={styles.subItemLeft}>
+              <TouchableOpacity
+                testID={`edit-sub-${sub.id}`}
+                style={styles.subItemLeft}
+                onPress={() => onEditSubCategory(sub)}
+              >
                 <Text style={styles.subIcon}>{sub.icon || '📋'}</Text>
                 <Text style={[styles.subName, { color: theme.colors.textSecondary }]}>{sub.name}</Text>
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.subDeleteButton}
                 onPress={() => onDeleteSubCategory(sub.id, sub.name)}
@@ -85,6 +102,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 6,
   },
   expandIcon: {
     fontSize: 12,
@@ -98,6 +120,14 @@ const styles = StyleSheet.create({
   },
   count: {
     fontSize: 12,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  editText: {
+    fontSize: 14,
   },
   deleteButton: {
     paddingHorizontal: 12,
@@ -123,6 +153,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   subIcon: {
     fontSize: 16,

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SyncResult } from '../types/googleSheets';
 import { Transaction, Category, SubCategory, PaymentMethod } from '../types';
-import { SHEETS_API, SHEET_NAMES, CELL_RANGES } from '../constants/googleSheets';
+import { SHEETS_API, SHEET_NAMES, CELL_RANGES, CATEGORY_MATRIX, PAYMENT_MAX_ROWS } from '../constants/googleSheets';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { IGoogleSheetsService } from './interfaces/IGoogleSheetsService';
 
@@ -99,39 +99,34 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       const subCategories = this.deps.subCategoryService.getAll();
       const paymentMethods = this.deps.paymentMethodService.getAll();
 
-      if (categories.length === 0) {
-        return this.createSyncResult(
-          'error',
-          '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
-        );
+      const missingSettings = this.checkRequiredSettings(categories, paymentMethods);
+      if (missingSettings) {
+        return this.createSyncResult('error', missingSettings);
       }
 
-      // 카테고리 매트릭스 (각 행을 10열로 패딩 — E~N열)
-      const maxCategoryCols = 16; // E41:T50 = 16열 (대분류 1 + 소분류 최대 15)
-      const maxCategoryRows = 20; // 20행
+      // 카테고리 매트릭스 (A1:P20 = 20행×16열)
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
         const subNames = subs.map((sc) =>
           sc.icon ? `${sc.icon}${sc.name}` : sc.name
         );
         const row = [cat.name, ...subNames] as (string | number | null)[];
-        while (row.length < maxCategoryCols) row.push('');
+        while (row.length < CATEGORY_MATRIX.MAX_COLS) row.push('');
         return row;
       });
-      while (categoryMatrix.length < maxCategoryRows) {
-        categoryMatrix.push(new Array(maxCategoryCols).fill(''));
+      while (categoryMatrix.length < CATEGORY_MATRIX.MAX_ROWS) {
+        categoryMatrix.push(new Array(CATEGORY_MATRIX.MAX_COLS).fill(''));
       }
 
       // 결제수단 (패딩 포함)
-      const maxPaymentRows = 5;
       const creditCards = paymentMethods
         .filter((pm) => pm.type === 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
-      while (creditCards.length < maxPaymentRows) creditCards.push(['']);
+      while (creditCards.length < PAYMENT_MAX_ROWS) creditCards.push(['']);
       const debitAndCash = paymentMethods
         .filter((pm) => pm.type !== 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
-      while (debitAndCash.length < maxPaymentRows) debitAndCash.push(['']);
+      while (debitAndCash.length < PAYMENT_MAX_ROWS) debitAndCash.push(['']);
 
       // 거래 데이터에서 연도 자동 감지 (시트가 해당 연도용이므로)
       const allTransactions = this.deps.transactionService.getAll();
@@ -265,37 +260,32 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       const subCategories = this.deps.subCategoryService.getAll();
       const paymentMethods = this.deps.paymentMethodService.getAll();
 
-      if (categories.length === 0) {
-        return this.createSyncResult(
-          'error',
-          '내보낼 지출 카테고리가 없습니다. 설정을 먼저 가져오기 해주세요.'
-        );
+      const missingSettings = this.checkRequiredSettings(categories, paymentMethods);
+      if (missingSettings) {
+        return this.createSyncResult('error', missingSettings);
       }
 
-      const maxCategoryCols = 10;
-      const maxCategoryRows = 10;
       const categoryMatrix = categories.map((cat) => {
         const subs = subCategories.filter((sc) => sc.categoryId === cat.id);
         const subNames = subs.map((sc) =>
           sc.icon ? `${sc.icon}${sc.name}` : sc.name
         );
         const row = [cat.name, ...subNames] as (string | number | null)[];
-        while (row.length < maxCategoryCols) row.push('');
+        while (row.length < CATEGORY_MATRIX.MAX_COLS) row.push('');
         return row;
       });
-      while (categoryMatrix.length < maxCategoryRows) {
-        categoryMatrix.push(new Array(maxCategoryCols).fill(''));
+      while (categoryMatrix.length < CATEGORY_MATRIX.MAX_ROWS) {
+        categoryMatrix.push(new Array(CATEGORY_MATRIX.MAX_COLS).fill(''));
       }
 
-      const maxPaymentRows = 5;
       const creditCards = paymentMethods
         .filter((pm) => pm.type === 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
-      while (creditCards.length < maxPaymentRows) creditCards.push(['']);
+      while (creditCards.length < PAYMENT_MAX_ROWS) creditCards.push(['']);
       const debitAndCash = paymentMethods
         .filter((pm) => pm.type !== 'credit')
         .map((pm) => [pm.name] as (string | number | null)[]);
-      while (debitAndCash.length < maxPaymentRows) debitAndCash.push(['']);
+      while (debitAndCash.length < PAYMENT_MAX_ROWS) debitAndCash.push(['']);
 
       // 단 1번의 API 호출
       await this.batchWrite([
@@ -321,16 +311,17 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
   // ========== Import ==========
 
-  async importAll(): Promise<SyncResult> {
+  async importAll(year?: number): Promise<SyncResult> {
     const token = await this.deps.getAccessToken();
     if (!token) {
       throw new Error('인증이 필요합니다');
     }
 
     try {
-      // 1번의 batchGet으로 연도 + 설정 + 12개월 거래를 모두 읽기
+      const resolvedYear = year ?? new Date().getFullYear();
+
+      // 1번의 batchGet으로 설정 + 12개월 거래를 모두 읽기
       const ranges: string[] = [
-        "'(필수)설정 시트'!B2",  // 연도 셀
         CELL_RANGES.CATEGORIES,
         CELL_RANGES.PAYMENT_CREDIT,
         CELL_RANGES.PAYMENT_DEBIT,
@@ -343,26 +334,22 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       const allData = await this.batchRead(ranges);
 
-      // 연도 추출 (인덱스 0)
-      const yearData = allData[0] || [];
-      const year = yearData[0]?.[0] ? Number(yearData[0][0]) : new Date().getFullYear();
-
-      // 설정 처리 (인덱스 1, 2, 3)
+      // 설정 처리 (인덱스 0, 1, 2)
       const settingsResult = this.processImportSettings(
+        allData[0] || [],
         allData[1] || [],
-        allData[2] || [],
-        allData[3] || []
+        allData[2] || []
       );
 
-      // 거래 처리 (인덱스 4부터 2개씩: expense, income)
+      // 거래 처리 (인덱스 3부터 2개씩: expense, income)
       let totalImported = 0;
       for (let month = 1; month <= 12; month++) {
-        const dataIndex = 4 + (month - 1) * 2;
+        const dataIndex = 3 + (month - 1) * 2;
         const expenseRows = allData[dataIndex] || [];
         const incomeRows = allData[dataIndex + 1] || [];
 
         const imported = await this.processImportTransactions(
-          year,
+          resolvedYear,
           month,
           expenseRows,
           incomeRows
@@ -372,7 +359,9 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', `전체 가져오기 완료 (${year}년 ${totalImported}건)`, {
+      const settingsGuide = this.buildImportSettingsMessage(settingsResult);
+      const message = `전체 가져오기 완료 (${resolvedYear}년 ${totalImported}건)\n${settingsGuide}`;
+      return this.createSyncResult('success', message, {
         transactions: totalImported,
         ...settingsResult,
       });
@@ -443,7 +432,8 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       await this.updateLastSyncTime();
 
-      return this.createSyncResult('success', '설정 가져오기 완료', result);
+      const message = this.buildImportSettingsMessage(result);
+      return this.createSyncResult('success', message, result);
     } catch (error) {
       return this.createSyncResult(
         'error',
@@ -906,6 +896,61 @@ export class GoogleSheetsService implements IGoogleSheetsService {
   }
 
   // ========== Private: Helpers ==========
+
+  /**
+   * 내보내기 전 필수 설정 검증
+   * 누락된 항목이 있으면 안내 메시지 반환, 모두 있으면 null
+   */
+  private checkRequiredSettings(
+    categories: Category[],
+    paymentMethods: PaymentMethod[]
+  ): string | null {
+    const missing: string[] = [];
+    if (categories.length === 0) missing.push('지출 카테고리');
+    if (paymentMethods.length === 0) missing.push('결제수단');
+
+    if (missing.length > 0) {
+      return `${missing.join(', ')}이(가) 등록되지 않았습니다. 먼저 설정에서 추가해주세요.`;
+    }
+    return null;
+  }
+
+  /**
+   * 가져오기 후 설정 상태 안내 메시지 생성
+   */
+  private buildImportSettingsMessage(
+    result: { categories: number; subCategories: number; paymentMethods: number }
+  ): string {
+    const parts: string[] = [];
+    const missing: string[] = [];
+
+    if (result.categories > 0) {
+      parts.push(`카테고리 ${result.categories}건`);
+    }
+    if (result.subCategories > 0) {
+      parts.push(`소분류 ${result.subCategories}건`);
+    }
+    if (result.paymentMethods > 0) {
+      parts.push(`결제수단 ${result.paymentMethods}건`);
+    }
+
+    // 현재 앱에 등록된 전체 데이터 확인
+    const totalCategories = this.deps.categoryService.getByType('expense').length;
+    const totalPayments = this.deps.paymentMethodService.getAll().length;
+
+    if (totalCategories === 0) missing.push('지출 카테고리');
+    if (totalPayments === 0) missing.push('결제수단');
+
+    let message = parts.length > 0
+      ? `설정 가져오기 완료 (${parts.join(', ')})`
+      : '설정 가져오기 완료 (변경 없음)';
+
+    if (missing.length > 0) {
+      message += `\n${missing.join(', ')}이(가) 비어있습니다. 앱에서 먼저 등록해주세요.`;
+    }
+
+    return message;
+  }
 
   /**
    * 거래 데이터에서 가장 많이 사용된 연도를 감지

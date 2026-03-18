@@ -92,7 +92,6 @@ describe('BackupRestoreSection', () => {
   });
 
   it('동기화 중 스피너 표시', async () => {
-    // Create a never-resolving export to keep syncing state
     let resolveExport: (result: SyncResult) => void;
     const onExport = jest.fn().mockReturnValue(
       new Promise<SyncResult>((resolve) => {
@@ -110,7 +109,6 @@ describe('BackupRestoreSection', () => {
       expect(getByTestId('sync-spinner')).toBeTruthy();
     });
 
-    // Cleanup: resolve the promise
     resolveExport!(mockSuccessResult);
   });
 
@@ -150,5 +148,91 @@ describe('BackupRestoreSection', () => {
 
     fireEvent.press(getByTestId('sign-out-button'));
     expect(onSignOut).toHaveBeenCalled();
+  });
+
+  // ========== 스프레드시트 ID 모달 ==========
+
+  it('ID 미등록 시 등록 버튼 표시', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} spreadsheetId="" />
+    );
+    expect(getByTestId('register-sheet-id-button')).toBeTruthy();
+    expect(queryByTestId('spreadsheet-id-display')).toBeNull();
+  });
+
+  it('ID 등록됨 → 마스킹된 ID + 변경 버튼 표시', () => {
+    const { getByTestId, queryByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} spreadsheetId="1S5H-FmixaZ-H8Vc8p2N0MMDOPuvJHCXmPejru3snyLY" />
+    );
+    expect(getByTestId('spreadsheet-id-display')).toBeTruthy();
+    expect(getByTestId('change-sheet-id-button')).toBeTruthy();
+    expect(queryByTestId('register-sheet-id-button')).toBeNull();
+  });
+
+  it('등록 버튼 클릭 → 모달 열림', () => {
+    const { getByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} spreadsheetId="" />
+    );
+
+    fireEvent.press(getByTestId('register-sheet-id-button'));
+    expect(getByTestId('sheet-id-modal')).toBeTruthy();
+    expect(getByTestId('spreadsheet-id-input')).toBeTruthy();
+  });
+
+  it('변경 버튼 클릭 → 모달 열림 (기존 ID 표시)', () => {
+    const id = '1S5H-FmixaZ-H8Vc8p2N0MMDOPuvJHCXmPejru3snyLY';
+    const { getByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} spreadsheetId={id} />
+    );
+
+    fireEvent.press(getByTestId('change-sheet-id-button'));
+    const input = getByTestId('spreadsheet-id-input');
+    expect(input.props.value).toBe(id);
+  });
+
+  it('모달에서 URL 입력 → ID 추출 후 저장', async () => {
+    const onSpreadsheetIdChange = jest.fn().mockResolvedValue(undefined);
+    const { getByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} onSpreadsheetIdChange={onSpreadsheetIdChange} />
+    );
+
+    fireEvent.press(getByTestId('register-sheet-id-button'));
+    fireEvent.changeText(
+      getByTestId('spreadsheet-id-input'),
+      'https://docs.google.com/spreadsheets/d/1S5H-FmixaZ-abc123/edit#gid=0'
+    );
+    fireEvent.press(getByTestId('modal-save-button'));
+
+    await waitFor(() => {
+      expect(onSpreadsheetIdChange).toHaveBeenCalledWith('1S5H-FmixaZ-abc123');
+    });
+  });
+
+  it('모달에서 ID 직접 입력 → 그대로 저장', async () => {
+    const onSpreadsheetIdChange = jest.fn().mockResolvedValue(undefined);
+    const { getByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} onSpreadsheetIdChange={onSpreadsheetIdChange} />
+    );
+
+    fireEvent.press(getByTestId('register-sheet-id-button'));
+    fireEvent.changeText(getByTestId('spreadsheet-id-input'), 'abc123-direct-id');
+    fireEvent.press(getByTestId('modal-save-button'));
+
+    await waitFor(() => {
+      expect(onSpreadsheetIdChange).toHaveBeenCalledWith('abc123-direct-id');
+    });
+  });
+
+  it('모달 취소 → onSpreadsheetIdChange 미호출', () => {
+    const onSpreadsheetIdChange = jest.fn();
+    const { getByTestId } = render(
+      <BackupRestoreSection {...defaultProps} isSignedIn={true} onSpreadsheetIdChange={onSpreadsheetIdChange} />
+    );
+
+    fireEvent.press(getByTestId('register-sheet-id-button'));
+    fireEvent.changeText(getByTestId('spreadsheet-id-input'), 'some-id');
+    fireEvent.press(getByTestId('modal-cancel-button'));
+
+    expect(onSpreadsheetIdChange).not.toHaveBeenCalled();
   });
 });

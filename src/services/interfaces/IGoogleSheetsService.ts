@@ -41,7 +41,7 @@ export interface IGoogleSheetsService {
    * 전체 데이터 가져오기 (거래 + 설정)
    * @returns 동기화 결과
    */
-  importAll(): Promise<SyncResult>;
+  importAll(year?: number): Promise<SyncResult>;
 
   /**
    * 특정 월 거래 가져오기
